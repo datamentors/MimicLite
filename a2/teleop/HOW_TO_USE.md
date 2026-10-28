@@ -16,6 +16,17 @@ unchanged sim2real entry point:
   named free joint and without its own floor assets (sim2real adds its scene); the injected floor is made
   collidable (A2's main default class zeroes contype/conaffinity)
 
+## Calibration (per operator)
+`teleop.sh calibrate <height>` records a T-pose (`tools/record_pico.py`) and runs
+`tools/make_xrobot_to_a2.py --tpose`: it replays the recording through pico_retarget_pub's own preprocessing
+(Unity -> z-up, pelvis heading removed, floor alignment), straightens it to an ideal T-pose and sets every
+rotation **and position** offset so that T-pose lands exactly on A2's zero pose (also a T-pose).
+Check: the straightened T-pose retargets to A2 joints within 0.001 rad, torso 0.987 m, tilt 0.
+Output `<a2>/../calib/xrobot_to_a2_tpose_<ts>.json` (+ `xrobot_to_a2_tpose.json` link to the latest), used by
+`teleop.sh retarget` automatically; `A2_GMR_CONFIG=<json>` picks another, unset + no calibration = the
+generic G1-derived `xrobot_to_a2.json`. Note: in GMR's input frame the operator faces +y (the publisher
+removes the PICO pelvis frame's yaw, not the facing direction); the calibration measures and keeps that.
+
 ## Files
 | File | What |
 |---|---|
@@ -24,6 +35,7 @@ unchanged sim2real entry point:
 | `xrobot_to_a2.json` | GMR IK config, **generated** by `tools/make_xrobot_to_a2.py` - edit the generator, not the JSON |
 | `tools/make_xrobot_to_a2.py` | derives the A2 config from GMR's PICO-tuned `xrobot_to_g1.json` (derivation in its docstring) |
 | `tools/check_retarget.py` | offline check without a headset: G1 clip -> synthetic PICO frames -> A2, metrics + A2 dataset clip |
+| `tools/record_pico.py` | records raw PICO body tracking (works next to a running publisher) |
 | `tools/fake_pico.py` | runs the real `pico_retarget_pub.py` with a fake PICO (G1 clip as body data, scripted buttons) |
 
 ## Setup (once)
@@ -51,6 +63,7 @@ cd $MIMICLITE_ROOT && sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/ma
 ```bash
 a2/teleop/teleop.sh service          # XRoboToolkit PC Service; PICO app -> connect to this machine
 a2/teleop/teleop.sh sim              # MuJoCo A2, viewer URL printed (http://<host>:808x)
+a2/teleop/teleop.sh calibrate 1.75   # once per operator: 5 s countdown, hold a T-pose for 10 s
 a2/teleop/teleop.sh retarget 1.75    # operator height [m]; PICO whole-body tracking with leg trackers
 a2/teleop/teleop.sh policy
 ```
