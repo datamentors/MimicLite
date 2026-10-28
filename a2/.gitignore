@@ -6,3 +6,5 @@ cache/
 logs/
 renders/
 __pycache__/
+# template is committed (repo root ignores .env.*)
+!docker/.env.example
