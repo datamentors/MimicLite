@@ -16,7 +16,8 @@ A2's neutral twist from the training data (BonesSeedA2 medians left -0.06 / righ
 pose -0.05 / -1.51): left 0, right -pi/2. A "thumb up" twist (+pi/2 both) put the retargeted j5 at
 +2.6 / +2.1 rad, outside anything the policy was trained on.
 
-Mapping (A2 has no waist: torso is the root, so Spine3 is not used):
+Mapping (A2 has no waist: torso is the root; this G1-derived mode drives it from the pelvis, the --tpose
+calibration drives its orientation from the chest, Spine3 -> head_yaw, welded to the torso):
   torso <- Pelvis, *_hip_pitch <- *_Hip, *_tarsus (knee) <- *_Knee, *_toe_roll <- *_Ankle,
   *-arm-link3 <- *_Shoulder, *-arm-link4 <- *_Elbow, *-arm-link7 <- *_Wrist
 Weights are copied from the G1 analog. G1 targets its toe from Left_Foot; A2 targets the ankle joint
@@ -223,8 +224,24 @@ def calibrate_from_tpose(args) -> None:
         quat = quat if quat[0] >= 0 else -quat
         for table in ("ik_match_table1", "ik_match_table2"):
             pos_w, rot_w = g1_weights[table][g1_human]
+            if a2_body == "torso":
+                # torso orientation comes from the chest (below), the pelvis only places the root. GMR keeps
+                # offsets only for table1 entries with a non-zero weight, so table1 gets a weak position weight
+                rot_w = 0
+                pos_w = max(pos_w, 1) if table == "ik_match_table1" else pos_w
             out[table][a2_body] = [joint, pos_w, rot_w, [round(float(v), 4) for v in local],
                                    [round(float(v), 6) for v in quat]]
+
+    # A2 has no waist: its rigid torso (with the welded head) follows the operator's chest (Spine3), like
+    # G1's torso_link does. The PICO pelvis estimate tips back when standing normally, which with a
+    # pelvis-driven torso showed as a head bent backward. head_yaw is welded to torso (same frame at zero).
+    q_chest = human["Spine3"][1]
+    quat = (q_chest.inv() * (heading * body(a2, ad, "head_yaw")[1])).as_quat(scalar_first=True)
+    quat = quat if quat[0] >= 0 else -quat
+    scale["Spine3"] = s_leg
+    for table in ("ik_match_table1", "ik_match_table2"):
+        pos_w, rot_w = g1_weights[table]["Spine3"]
+        out[table]["head_yaw"] = ["Spine3", 0, rot_w, [0.0, 0.0, 0.0], [round(float(v), 6) for v in quat]]
     args.out.write_text(json.dumps(out, indent=4) + "\n")
     print(f"segments: hip->ankle {seg('Hip', 'Ankle'):.3f} m (A2 {a2_leg:.3f}), shoulder->wrist "
           f"{seg('Shoulder', 'Wrist'):.3f} m (A2 {a2_arm:.3f}); hip width "
