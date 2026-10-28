@@ -16,6 +16,15 @@ unchanged sim2real entry point:
   named free joint and without its own floor assets (sim2real adds its scene); the injected floor is made
   collidable (A2's main default class zeroes contype/conaffinity)
 
+## Self-collision policy
+Policies trained with image `a2-mimiclite:selfcol` (model `a2_serial_selfcol`: same bodies/joints + 20
+self-collision shapes) run the same way with the matching sim model. Export with that image (`docker run ...
+a2-mimiclite:selfcol`, same play.py command), then set in **every** terminal (sim, retarget, policy):
+```bash
+export A2_MODEL=a2_serial_selfcol A2_POLICY_DIR=<checkpoints>/a2-huge-selfcol-13000
+```
+Checked 2026-10-28 (huge selfcol ckpt 13000): wave_a2 4.4 cm, retargeted LAFAN dance1 3.8 cm, no falls.
+
 ## Calibration (per operator)
 `teleop.sh calibrate <height>` records a T-pose (`tools/record_pico.py`) and runs
 `tools/make_xrobot_to_a2.py --tpose`: it replays the recording through pico_retarget_pub's own preprocessing

@@ -15,6 +15,7 @@
 #   MIMICLITE_ROOT  checkout with sim2real/.venv and sim2real/venv/teleop/.venv   (default ~/MimicLite)
 #   A2_POLICY_DIR   policy.onnx + policy.yaml exported from an A2 checkpoint      (default <a2>/../checkpoints/a2-huge-12600)
 #   XROBO_SERVICE   XRoboToolkit PC Service install dir                           (default /opt/apps/roboticsservice)
+#   A2_MODEL        a2_serial | a2_serial_selfcol: sim/GMR model, match the policy (default a2_serial)
 set -euo pipefail
 A2_TELEOP="$(cd "$(dirname "$0")" && pwd)"
 A2_DIR="$(dirname "$A2_TELEOP")"
@@ -91,6 +92,6 @@ case "$cmd" in
       --inference_backend onnx-cpu --policy_config "$A2_POLICY_DIR/policy.yaml" --motion_backend zmq --controller pico "$@"
     ;;
   *)
-    sed -n '2,17p' "$0"; exit 1
+    sed -n '2,18p' "$0"; exit 1
     ;;
 esac

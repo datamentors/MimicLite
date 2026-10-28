@@ -9,9 +9,11 @@ Adds:
 Launcher (run any sim2real entry point with A2 registered):
   python a2/teleop/a2_sim2real.py <sim2real script.py> --robot a2 [script args...]
 
-Model: a2/model/a2_serial/a2_serial.xml (the MJCF the A2 MimicLite policy was trained on). sim2real needs a
-named root joint and adds its own floor scene, so a copy with the free joint named "floating_base_joint"
-and without A2's skybox/groundplane assets is generated next to it (a2_serial_sim.xml, git-ignored). Actuator values below mirror a2/overlay/mimic_lite/assets/a2.py MOTORS.
+Model: a2/model/<A2_MODEL>/a2_serial.xml, the MJCF the policy was trained on: A2_MODEL=a2_serial (default) or
+a2_serial_selfcol (same bodies/joints + self-collision shapes, for policies trained with image
+a2-mimiclite:selfcol). sim2real needs a named root joint and adds its own floor scene, so a copy with the
+free joint named "floating_base_joint" and without A2's skybox/groundplane assets is generated next to it
+(a2_serial_sim.xml, git-ignored). Actuator values below mirror a2/overlay/mimic_lite/assets/a2.py MOTORS.
 """
 
 from __future__ import annotations
@@ -23,7 +25,10 @@ import sys
 from pathlib import Path
 
 A2_DIR = Path(__file__).resolve().parents[1]
-A2_SRC_MJCF = A2_DIR / "model" / "a2_serial" / "a2_serial.xml"
+A2_MODEL = os.environ.get("A2_MODEL", "a2_serial")
+A2_SRC_MJCF = A2_DIR / "model" / A2_MODEL / "a2_serial.xml"
+if not A2_SRC_MJCF.exists():
+    raise FileNotFoundError(f"A2_MODEL={A2_MODEL}: {A2_SRC_MJCF} not found (a2_serial | a2_serial_selfcol)")
 A2_SIM_MJCF = A2_SRC_MJCF.with_name("a2_serial_sim.xml")
 XROBOT_TO_A2_JSON = Path(__file__).resolve().parent / "xrobot_to_a2.json"  # generic (G1-derived) default
 # operator calibration (teleop.sh calibrate) selects its own config via env A2_GMR_CONFIG
