@@ -55,7 +55,9 @@ a2/teleop/teleop.sh retarget 1.75    # operator height [m]; PICO whole-body trac
 a2/teleop/teleop.sh policy
 ```
 PICO buttons: **A** stand pose -> **A+B** policy on -> **X** start/pause following you -> **B** hold.
-In the sim viewer, untick the elastic band once the policy follows (it pulls the torso up with ~400 N).
+In the sim viewer, untick the elastic band once the policy follows. For A2 the band is scaled by the
+A2/G1 mass ratio (x2.09, stiffness 418 / damping 209) so A2 hangs like G1 does (torso ~1.34 m, feet ~0.3 m
+up); override with `A2_BAND_SCALE=<factor> teleop.sh sim`.
 
 No headset: use `a2/teleop/teleop.sh fake-pico [lafan clip]` instead of `retarget` - it presses A, A+B, X
 by itself (t = 3, 6, 9 s) and streams a G1 LAFAN clip as PICO body data through the real publisher.

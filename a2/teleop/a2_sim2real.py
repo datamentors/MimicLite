@@ -16,6 +16,7 @@ and without A2's skybox/groundplane assets is generated next to it (a2_serial_si
 
 from __future__ import annotations
 
+import os
 import re
 import runpy
 import sys
@@ -26,6 +27,8 @@ A2_SRC_MJCF = A2_DIR / "model" / "a2_serial" / "a2_serial.xml"
 A2_SIM_MJCF = A2_SRC_MJCF.with_name("a2_serial_sim.xml")
 XROBOT_TO_A2_JSON = Path(__file__).resolve().parent / "xrobot_to_a2.json"
 GMR_ROBOT = "agibot_a2"
+A2_MASS_KG = 70.51  # a2_serial.xml total mass (sim model)
+G1_MASS_KG = 33.74  # sim2real G1 (g1-mode_13_15.xml), what base_sim's elastic band is tuned for
 
 JOINT_NAMES = (
     "idx01_left_hip_roll", "idx02_left_hip_yaw", "idx03_left_hip_pitch",
@@ -150,6 +153,7 @@ def register() -> None:
 
     robots._ROBOT_CFGS["a2"] = make_robot_cfg()
     _patch_sim_floor()
+    _patch_elastic_band()
 
     try:
         import general_motion_retargeting as gmr
@@ -205,6 +209,32 @@ def _patch_sim_floor() -> None:
 
     ensure_joint_motor_actuators._a2_patched = True
     mjcf.ensure_joint_motor_actuators = ensure_joint_motor_actuators
+
+
+def _patch_elastic_band() -> None:
+    """base_sim's elastic band (virtual gantry) is sized for G1 (33.7 kg): stiffness 200 / damping 100 toward
+    a point 3 m up. A2 (70.5 kg) sags through it. Scale both by the mass ratio so A2 hangs like G1 does
+    (override with env A2_BAND_SCALE). Applies only with --robot a2."""
+    if _active_robot() != "a2":
+        return
+    try:
+        from sim2real.sim_env.utils import elastic_band
+    except ImportError:
+        return
+    base_cls = elastic_band.ElasticBand
+    if getattr(base_cls, "_a2_patched", False):
+        return
+    scale = float(os.environ.get("A2_BAND_SCALE", A2_MASS_KG / G1_MASS_KG))
+
+    class A2ElasticBand(base_cls):
+        _a2_patched = True
+
+        def __init__(self):
+            super().__init__()
+            self.stiffness *= scale
+            self.damping *= scale
+
+    elastic_band.ElasticBand = A2ElasticBand
 
 
 def _active_robot() -> str | None:
