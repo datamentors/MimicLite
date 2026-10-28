@@ -4,6 +4,7 @@
 #   teleop.sh service            XRoboToolkit PC Service (PICO app connects to this machine)
 #   teleop.sh sim                MuJoCo A2 (viewer URL printed; elastic band on - turn it off in the viewer
 #                                once the policy is following you)
+#   teleop.sh pose [zero|default] browser view of A2 standing in its zero T-pose (what calibrate matches) / stand pose
 #   teleop.sh calibrate [height] (once per operator) record a T-pose -> calibrated GMR config, used by retarget
 #   teleop.sh retarget [height]  PICO body -> GMR -> A2 stream (operator height in m, default 1.75)
 #   teleop.sh policy             A2 policy (PICO buttons: A = stand | A+B = policy on | X = follow/pause | B = hold)
@@ -43,6 +44,10 @@ case "$cmd" in
   sim)
     need "$PY" "sim2real venv"
     cd "$SIM2REAL" && exec "$PY" "$LAUNCH" sim2real/sim_env/base_sim.py --robot a2 "$@"
+    ;;
+  pose)
+    need "$PY" "sim2real venv"
+    cd "$SIM2REAL" && exec "$PY" "$A2_TELEOP/tools/view_pose.py" "${1:-zero}"
     ;;
   calibrate)
     need "$TPY" "sim2real teleop venv"
@@ -86,6 +91,6 @@ case "$cmd" in
       --inference_backend onnx-cpu --policy_config "$A2_POLICY_DIR/policy.yaml" --motion_backend zmq --controller pico "$@"
     ;;
   *)
-    sed -n '2,16p' "$0"; exit 1
+    sed -n '2,17p' "$0"; exit 1
     ;;
 esac
