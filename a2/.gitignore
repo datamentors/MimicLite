@@ -1,0 +1,8 @@
+# private values + host data (see docker/.env.example)
+docker/.env
+motions/
+runs/
+cache/
+logs/
+renders/
+__pycache__/
