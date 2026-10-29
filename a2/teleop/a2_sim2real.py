@@ -5,6 +5,8 @@ Adds:
   - GMR target "agibot_a2" (robot MJCF + xrobot IK config) to GMR's module-level registries
   - pico_retarget_pub hardcodes tgt_robot="unitree_g1": with --robot a2 the GMR class is swapped for
     one that retargets to agibot_a2 instead
+  - PICO drift lock (--robot a2): GMR's XRobotStreamer is swapped for one that removes slow PICO world-frame
+    drift while both feet stand still (see DriftLock)
 
 Launcher (run any sim2real entry point with A2 registered):
   python a2/teleop/a2_sim2real.py <sim2real script.py> --robot a2 [script args...]
@@ -22,7 +24,10 @@ import os
 import re
 import runpy
 import sys
+import time
 from pathlib import Path
+
+import numpy as np
 
 A2_DIR = Path(__file__).resolve().parents[1]
 A2_MODEL = os.environ.get("A2_MODEL", "a2_serial")
@@ -174,6 +179,7 @@ def register() -> None:
     params.IK_CONFIG_DICT.setdefault("xrobot", {})[GMR_ROBOT] = GMR_CONFIG
     params.ROBOT_BASE_DICT[GMR_ROBOT] = "torso"
     params.VIEWER_CAM_DISTANCE_DICT[GMR_ROBOT] = 3.0
+    _patch_xrobot_drift_lock(gmr)
 
     base_cls = gmr.GeneralMotionRetargeting
     if getattr(base_cls, "_a2_patched", False):
@@ -243,6 +249,84 @@ def _patch_elastic_band() -> None:
             self.damping *= scale
 
     elastic_band.ElasticBand = A2ElasticBand
+
+
+class DriftLock:
+    """Removes slow drift of PICO's world frame from the body stream (z-up, after the Unity transform).
+
+    pico_retarget_pub passes PICO's pelvis/feet world XY straight to GMR (anchored once, at X / reconnect), and
+    the A2 policy reads the reference root motion as a walk command: a slowly sliding PICO world frame makes
+    the robot walk although the operator stands still. While both foot trackers are still (smoothed horizontal
+    speed below STILL_SPEED for STILL_HOLD_S), every horizontal shift of the feet is folded into an offset
+    applied to the whole body, so the corrected feet stay where they were; the pelvis still moves relative to
+    the feet (weight shifts, leaning). When a foot moves the offset is frozen, so real steps pass through
+    unchanged. Drift while walking is not removed. Heading (yaw) drift is not handled."""
+
+    FEET = ("Left_Foot", "Right_Foot")
+    STILL_SPEED = 0.08  # m/s; standing-still tracker noise (T-pose recordings) peaks at 0.03 m/s smoothed
+    STILL_HOLD_S = 0.2
+    SPEED_TAU_S = 0.1  # speed smoothing time constant
+    GAP_S = 0.5  # longer pause between frames (reconnect) restarts the stillness detection
+
+    def __init__(self):
+        self.offset = np.zeros(2)
+        self.locked = False
+        self._lock_xy = np.zeros(2)  # corrected mean foot position held while locked
+        self._prev_t: float | None = None
+        self._prev_feet = np.zeros((2, 2))
+        self._speed = np.zeros(2)
+        self._still_s = 0.0
+
+    def apply(self, body_pose_dict: dict, t_s: float) -> dict:
+        feet = np.array([body_pose_dict[name][0][:2] for name in self.FEET], dtype=np.float64)
+        dt = None if self._prev_t is None else t_s - self._prev_t
+        if dt is None or dt > self.GAP_S:
+            self._speed[:] = 0.0
+            self._still_s = 0.0
+        elif dt > 0.0:
+            speed = np.linalg.norm(feet - self._prev_feet, axis=1) / dt
+            self._speed += min(dt / self.SPEED_TAU_S, 1.0) * (speed - self._speed)
+            both_still = bool((self._speed < self.STILL_SPEED).all())
+            self._still_s = self._still_s + dt if both_still else 0.0
+        self._prev_t, self._prev_feet = t_s, feet
+
+        mean_feet = feet.mean(axis=0)
+        lock = self._still_s >= self.STILL_HOLD_S
+        if lock and not self.locked:
+            self._lock_xy = mean_feet + self.offset  # offset stays continuous at lock start
+        if lock:
+            self.offset = self._lock_xy - mean_feet
+        if lock != self.locked:
+            print(f"[A2 drift lock] {'feet still: locked' if lock else 'feet moving: released'}, "
+                  f"offset ({self.offset[0]:+.3f}, {self.offset[1]:+.3f}) m", flush=True)
+            self.locked = lock
+
+        ox, oy = float(self.offset[0]), float(self.offset[1])
+        return {name: [[float(pos[0]) + ox, float(pos[1]) + oy, float(pos[2])], quat]
+                for name, (pos, quat) in body_pose_dict.items()}
+
+
+def _patch_xrobot_drift_lock(gmr) -> None:
+    """pico_retarget_pub reads PICO body data through GMR's XRobotStreamer (get_raw_body_data, then
+    coordinate_transform_unity_data): swap in a subclass whose transform runs DriftLock. Applies only with
+    --robot a2. tools/fake_pico.py subclasses the swapped class, so the fake PICO goes through it too."""
+    if _active_robot() != "a2":
+        return
+    base_cls = gmr.XRobotStreamer
+    if getattr(base_cls, "_a2_drift_patched", False):
+        return
+
+    class A2DriftLockXRobotStreamer(base_cls):
+        _a2_drift_patched = True
+
+        def coordinate_transform_unity_data(self, body_pose_dict):
+            body_pose_dict = super().coordinate_transform_unity_data(body_pose_dict)
+            lock = self.__dict__.get("_a2_drift_lock")  # FakeXRobotStreamer skips __init__: create lazily
+            if lock is None:
+                lock = self._a2_drift_lock = DriftLock()
+            return lock.apply(body_pose_dict, time.monotonic())
+
+    gmr.XRobotStreamer = A2DriftLockXRobotStreamer
 
 
 def _active_robot() -> str | None:

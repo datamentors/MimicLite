@@ -15,6 +15,22 @@ unchanged sim2real entry point:
 - sim model `a2/model/a2_serial/a2_serial_sim.xml` (generated, git-ignored): the training MJCF with a
   named free joint and without its own floor assets (sim2real adds its scene); the injected floor is made
   collidable (A2's main default class zeroes contype/conaffinity)
+- PICO drift lock (`DriftLock`, GMR's `XRobotStreamer` swapped): see below
+
+## PICO drift lock
+PICO's world frame slides slowly; pico_retarget_pub passes PICO's pelvis/feet world XY straight to GMR, and
+the policy reads reference root motion as a walk command, so the robot walked backwards while the operator
+stood still. While both foot trackers are still (smoothed horizontal speed < 0.08 m/s for 0.2 s; standing
+noise peaks at 0.03 m/s), every horizontal shift of the feet is folded into an offset on the whole body;
+moving feet release it, so real steps pass through. The publisher prints `[A2 drift lock] ... locked/released,
+offset (x, y)` on each change. Not removed: drift while walking, heading (yaw) drift. `tools/record_pico.py`
+records the raw (uncorrected) PICO stream. Offline check (2026-10-29): standing T-pose + 1 cm/s injected drift
+8.3 cm -> 0.2 cm; LAFAN walk1 224 m path, max offset 2.4 cm:
+```bash
+cd $MIMICLITE_ROOT && sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/check_drift_lock.py \
+  --tpose <a2>/../calib/tpose_<ts>.npz --motion any4hdmi/output/g1/lafan/motions/walk1_subject5.npz \
+  --manifest any4hdmi/output/g1/lafan/manifest.json
+```
 
 ## Self-collision policy
 Policies trained with image `a2-mimiclite:selfcol` (model `a2_serial_selfcol`: same bodies/joints + 20
@@ -46,6 +62,7 @@ removes the PICO pelvis frame's yaw, not the facing direction); the calibration 
 | `a2_sim2real.py` | runtime A2 registration + `python a2_sim2real.py <sim2real script.py> --robot a2 ...` |
 | `tools/make_xrobot_to_a2.py` | T-pose recording -> calibrated GMR config (run by `teleop.sh calibrate`; derivation in its docstring) |
 | `tools/check_retarget.py` | offline check without a headset: G1 clip -> synthetic PICO frames -> A2, metrics + A2 dataset clip |
+| `tools/check_drift_lock.py` | offline check of the PICO drift lock: injected drift on a standing recording, G1 walk passes through |
 | `tools/record_pico.py` | records raw PICO body tracking (works next to a running publisher) |
 | `tools/fake_pico.py` | runs the real `pico_retarget_pub.py` with a fake PICO (G1 clip as body data, scripted buttons) |
 
