@@ -13,14 +13,14 @@
 #
 # Uses an existing MimicLite checkout's sim2real venvs read-only (nothing is installed or changed there):
 #   MIMICLITE_ROOT  checkout with sim2real/.venv and sim2real/venv/teleop/.venv   (default ~/MimicLite)
-#   A2_POLICY_DIR   policy.onnx + policy.yaml exported from an A2 checkpoint      (default <a2>/../checkpoints/a2-huge-12600)
+#   A2_POLICY_DIR   policy.onnx + policy.yaml exported from an A2 checkpoint      (default <a2>/../checkpoints/a2-huge-selfcol-23000)
 #   XROBO_SERVICE   XRoboToolkit PC Service install dir                           (default /opt/apps/roboticsservice)
-#   A2_MODEL        a2_serial | a2_serial_selfcol: sim/GMR model, match the policy (default a2_serial)
+#   A2_MODEL        a2_serial_selfcol | a2_serial: sim/GMR model, match the policy (default a2_serial_selfcol)
 set -euo pipefail
 A2_TELEOP="$(cd "$(dirname "$0")" && pwd)"
 A2_DIR="$(dirname "$A2_TELEOP")"
 MIMICLITE_ROOT="${MIMICLITE_ROOT:-$HOME/MimicLite}"
-A2_POLICY_DIR="${A2_POLICY_DIR:-$(dirname "$A2_DIR")/checkpoints/a2-huge-12600}"
+A2_POLICY_DIR="${A2_POLICY_DIR:-$(dirname "$A2_DIR")/checkpoints/a2-huge-selfcol-23000}"
 CALIB_DIR="${A2_CALIB_DIR:-$(dirname "$A2_DIR")/calib}"  # operator T-pose calibrations (not in git)
 SIM2REAL="$MIMICLITE_ROOT/sim2real"
 PY="$SIM2REAL/.venv/bin/python"
