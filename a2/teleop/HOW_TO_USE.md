@@ -35,7 +35,7 @@ cd $MIMICLITE_ROOT && sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/ch
 ## Self-collision (default)
 The sim runs with self-collision by default (since 2026-10-29): model `a2_serial_selfcol` (same bodies/joints +
 20 self-collision shapes; 176 robot-robot contact pairs in the sim scene, `a2_serial` has 0) and policy
-`a2-huge-selfcol-28000`, trained with image `a2-mimiclite:selfcol`. Export newer selfcol checkpoints with that
+`a2-huge-selfcol-30000`, trained with image `a2-mimiclite:selfcol`. Export newer selfcol checkpoints with that
 image (`docker run ... a2-mimiclite:selfcol`, same play.py command). Model and policy must match: for a policy
 trained without self-collision (image `a2-mimiclite:latest`, e.g. `a2-huge-12600`) set in **every** terminal
 (sim, retarget, policy):
@@ -83,7 +83,7 @@ A2_UID=$(id -u) A2_GID=$(id -g) GPUS=0 docker compose -f docker/compose.yaml run
     algo/ppo/module=huge task.num_envs=1 checkpoint_path=/runs/<ckpt>.pt headless=true \
     export_policy=true ++export_only=true hydra.run.dir=/runs/play/export hydra.job.chdir=true && \
   mkdir -p /runs/exports && cp projects/mimic-lite/scripts/exports/*/policy-* /runs/exports/ && chown -R $(id -u):$(id -g) /runs"
-# then: <checkpoints>/<name>/policy.onnx + policy.yaml  (A2_POLICY_DIR, default <a2>/../checkpoints/a2-huge-selfcol-28000)
+# then: <checkpoints>/<name>/policy.onnx + policy.yaml  (A2_POLICY_DIR, default <a2>/../checkpoints/a2-huge-selfcol-30000)
 ```
 GMR config (after changing the generator, re-run on an existing recording instead of re-recording):
 ```bash
