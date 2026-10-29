@@ -10,8 +10,8 @@ PICO 4 + leg trackers --XRoboToolkit PC Service--> pico_retarget_pub.py (GMR: xr
 The `sim2real` submodule is **not modified**. `a2_sim2real.py` registers A2 at runtime and then runs the
 unchanged sim2real entry point:
 - RobotCfg `a2`: joints, limits and actuator values from `a2/overlay/mimic_lite/assets/a2.py`
-- GMR target `agibot_a2` with `xrobot_to_a2.json` (pico_retarget_pub hardcodes `unitree_g1`; with
-  `--robot a2` the GMR class is swapped)
+- GMR target `agibot_a2` with the operator's T-pose calibration `<a2>/../calib/xrobot_to_a2_tpose.json`
+  (pico_retarget_pub hardcodes `unitree_g1`; with `--robot a2` the GMR class is swapped)
 - sim model `a2/model/a2_serial/a2_serial_sim.xml` (generated, git-ignored): the training MJCF with a
   named free joint and without its own floor assets (sim2real adds its scene); the injected floor is made
   collidable (A2's main default class zeroes contype/conaffinity)
@@ -25,15 +25,18 @@ export A2_MODEL=a2_serial_selfcol A2_POLICY_DIR=<checkpoints>/a2-huge-selfcol-13
 ```
 Checked 2026-10-28 (huge selfcol ckpt 13000): wave_a2 4.4 cm, retargeted LAFAN dance1 3.8 cm, no falls.
 
-## Calibration (per operator)
+## Calibration (per operator, required)
+The T-pose calibration is the only GMR config: there is no generic fallback. Calibrate once per operator
+(again if the trackers are worn differently); `retarget`, `fake-pico` and `check_retarget.py` all use it.
 `teleop.sh calibrate <height>` records a T-pose (`tools/record_pico.py`) and runs
 `tools/make_xrobot_to_a2.py --tpose`: it replays the recording through pico_retarget_pub's own preprocessing
 (Unity -> z-up, pelvis heading removed, floor alignment), straightens it to an ideal T-pose and sets every
 rotation **and position** offset so that T-pose lands exactly on A2's zero pose (also a T-pose).
 Check: the straightened T-pose retargets to A2 joints within 0.001 rad, torso 0.987 m, tilt 0.
 Output `<a2>/../calib/xrobot_to_a2_tpose_<ts>.json` (+ `xrobot_to_a2_tpose.json` link to the latest), used by
-`teleop.sh retarget` automatically; `A2_GMR_CONFIG=<json>` picks another, unset + no calibration = the
-generic G1-derived `xrobot_to_a2.json`. Note: in GMR's input frame the operator faces +y (the publisher
+`teleop.sh retarget` automatically; `A2_GMR_CONFIG=<json>` picks another (e.g. an earlier operator's
+`xrobot_to_a2_tpose_<ts>.json`), `A2_CALIB_DIR` moves the directory. Pass `retarget` the same height as
+`calibrate` (stored as `_calibration.height_m`). IK weights are copied from GMR's `xrobot_to_g1.json`. Note: in GMR's input frame the operator faces +y (the publisher
 removes the PICO pelvis frame's yaw, not the facing direction); the calibration measures and keeps that.
 
 ## Files
@@ -41,8 +44,7 @@ removes the PICO pelvis frame's yaw, not the facing direction); the calibration 
 |---|---|
 | `teleop.sh` | launcher: `service`, `sim`, `retarget`, `policy`, `fake-pico` |
 | `a2_sim2real.py` | runtime A2 registration + `python a2_sim2real.py <sim2real script.py> --robot a2 ...` |
-| `xrobot_to_a2.json` | GMR IK config, **generated** by `tools/make_xrobot_to_a2.py` - edit the generator, not the JSON |
-| `tools/make_xrobot_to_a2.py` | derives the A2 config from GMR's PICO-tuned `xrobot_to_g1.json` (derivation in its docstring) |
+| `tools/make_xrobot_to_a2.py` | T-pose recording -> calibrated GMR config (run by `teleop.sh calibrate`; derivation in its docstring) |
 | `tools/check_retarget.py` | offline check without a headset: G1 clip -> synthetic PICO frames -> A2, metrics + A2 dataset clip |
 | `tools/record_pico.py` | records raw PICO body tracking (works next to a running publisher) |
 | `tools/fake_pico.py` | runs the real `pico_retarget_pub.py` with a fake PICO (G1 clip as body data, scripted buttons) |
@@ -63,9 +65,10 @@ A2_UID=$(id -u) A2_GID=$(id -g) GPUS=0 docker compose -f docker/compose.yaml run
   mkdir -p /runs/exports && cp projects/mimic-lite/scripts/exports/*/policy-* /runs/exports/ && chown -R $(id -u):$(id -g) /runs"
 # then: <checkpoints>/<name>/policy.onnx + policy.yaml  (A2_POLICY_DIR, default <a2>/../checkpoints/a2-huge-12600)
 ```
-GMR config (after changing the generator):
+GMR config (after changing the generator, re-run on an existing recording instead of re-recording):
 ```bash
-cd $MIMICLITE_ROOT && sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/make_xrobot_to_a2.py
+cd $MIMICLITE_ROOT && sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/make_xrobot_to_a2.py \
+  --tpose <a2>/../calib/tpose_<ts>.npz --height 1.75 --out <a2>/../calib/xrobot_to_a2_tpose_<ts>.json
 ```
 
 ## Run (one terminal each, in order)
@@ -100,8 +103,10 @@ cd $MIMICLITE_ROOT/sim2real && .venv/bin/python <a2>/teleop/a2_sim2real.py sim2r
   0.94-0.997 vs G1, feet on the floor (lowest sole -6..+13 mm).
 - Policy on A2 training clips (integrated sim): body error 4.5-7.6 cm. On retargeted LAFAN: dance1 4.0 cm;
   walk1 falls at ~18 s.
-- Forearm twist (arm_joint5) in the GMR config uses A2's training-neutral twist; left wrist still ~1 rad
-  off the training median on synthetic data - tune with real PICO data (`A2_POSE_P` in the generator).
+- 2026-10-29, T-pose-only (calib `tpose_20261028_175751`), the offline numbers above were the removed
+  G1-derived config: walk1 600 frames arm direction cos 0.91-0.996 (was 0.74-0.89), knee/hip-pitch corr
+  0.93-0.985 but right knee mean|diff| 0.38 rad, lowest sole -36 mm. The synthetic G1 human is not the
+  calibrated operator, so `check_retarget` / `fake-pico` are approximate checks now.
 - A2 shoulder adducts only ~5 deg past vertical: arms hanging close to the body are not reachable.
 - Not tested with a real headset yet.
 - `npz_pub.py` cannot stream A2 (hardcodes root body "pelvis"); use `fake-pico`.

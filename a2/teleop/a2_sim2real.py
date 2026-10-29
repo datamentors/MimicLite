@@ -30,9 +30,10 @@ A2_SRC_MJCF = A2_DIR / "model" / A2_MODEL / "a2_serial.xml"
 if not A2_SRC_MJCF.exists():
     raise FileNotFoundError(f"A2_MODEL={A2_MODEL}: {A2_SRC_MJCF} not found (a2_serial | a2_serial_selfcol)")
 A2_SIM_MJCF = A2_SRC_MJCF.with_name("a2_serial_sim.xml")
-XROBOT_TO_A2_JSON = Path(__file__).resolve().parent / "xrobot_to_a2.json"  # generic (G1-derived) default
-# operator calibration (teleop.sh calibrate) selects its own config via env A2_GMR_CONFIG
-GMR_CONFIG = Path(os.environ.get("A2_GMR_CONFIG") or XROBOT_TO_A2_JSON).expanduser()
+CALIB_DIR = Path(os.environ.get("A2_CALIB_DIR") or A2_DIR.parent / "calib").expanduser()  # same as teleop.sh
+# GMR config = the per-operator T-pose calibration (teleop.sh calibrate, latest linked as xrobot_to_a2_tpose.json);
+# A2_GMR_CONFIG picks another calibration
+GMR_CONFIG = Path(os.environ.get("A2_GMR_CONFIG") or CALIB_DIR / "xrobot_to_a2_tpose.json").expanduser()
 GMR_ROBOT = "agibot_a2"
 A2_MASS_KG = 70.51  # a2_serial.xml total mass (sim model)
 G1_MASS_KG = 33.74  # sim2real G1 (g1-mode_13_15.xml), what base_sim's elastic band is tuned for
@@ -168,7 +169,7 @@ def register() -> None:
     except ImportError:
         return
     if not GMR_CONFIG.exists():
-        raise FileNotFoundError(f"{GMR_CONFIG} missing: run a2/teleop/tools/make_xrobot_to_a2.py")
+        raise FileNotFoundError(f"{GMR_CONFIG} missing: calibrate first ('a2/teleop/teleop.sh calibrate <height>')")
     params.ROBOT_XML_DICT[GMR_ROBOT] = ensure_sim_mjcf()
     params.IK_CONFIG_DICT.setdefault("xrobot", {})[GMR_ROBOT] = GMR_CONFIG
     params.ROBOT_BASE_DICT[GMR_ROBOT] = "torso"

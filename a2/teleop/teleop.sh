@@ -69,10 +69,9 @@ case "$cmd" in
     need "$TPY" "sim2real teleop venv"
     running RoboticsServiceProcess || echo "WARNING: XRoboToolkit service not running - start 'teleop.sh service' first."
     HEIGHT="${1:-1.75}"; [ $# -gt 0 ] && shift
-    if [ -z "${A2_GMR_CONFIG:-}" ] && [ -e "$CALIB_DIR/xrobot_to_a2_tpose.json" ]; then
-      export A2_GMR_CONFIG="$CALIB_DIR/xrobot_to_a2_tpose.json"
-    fi
-    echo "Operator height $HEIGHT m. GMR config: ${A2_GMR_CONFIG:-$A2_TELEOP/xrobot_to_a2.json (generic)}"
+    export A2_GMR_CONFIG="${A2_GMR_CONFIG:-$CALIB_DIR/xrobot_to_a2_tpose.json}"
+    [ -e "$A2_GMR_CONFIG" ] || { echo "ABORT: no T-pose calibration ($A2_GMR_CONFIG) - run 'teleop.sh calibrate $HEIGHT' first." >&2; exit 1; }
+    echo "Operator height $HEIGHT m. GMR config: $A2_GMR_CONFIG"
     echo "PICO: whole-body tracking on (leg trackers + calibration)."
     cd "$SIM2REAL" && exec "$TPY" "$LAUNCH" sim2real/teleop/pico_retarget_pub.py --robot a2 --actual-human-height "$HEIGHT" "$@"
     ;;

@@ -2,7 +2,7 @@
 
 Synthesizes PICO/XRoboToolkit-convention human frames from a G1 motion by inverting GMR's own
 xrobot_to_g1 mapping (q_human = q_G1body * off^-1, positions un-scaled about the pelvis), retargets them to
-A2 with xrobot_to_a2.json, and compares A2 against G1 frame by frame. --out DIR also writes the A2 motion
+A2 with the active T-pose calibration (a2_sim2real.GMR_CONFIG), and compares A2 against G1 frame by frame. --out DIR also writes the A2 motion
 as an any4hdmi dataset clip (DIR/manifest.json + DIR/motions/<clip>_a2.npz, 50 fps) that sim2real's
 integrated_sim2sim / npz_pub play like any A2 training clip.
 
@@ -33,8 +33,8 @@ from general_motion_retargeting.params import IK_CONFIG_DICT, ROBOT_XML_DICT  # 
 
 # human joint -> (G1 body it is read back from, G1 config entry whose offset/scale inverts it).
 # Ankle: G1 ankle_roll_link with Left_Foot's offset. Foot (toes) is not used by the A2 config but is the
-# lowest joint, which pico_retarget_pub aligns to the floor.
-G1_SOURCE = {"Pelvis": ("pelvis", "Pelvis")}
+# lowest joint, which pico_retarget_pub aligns to the floor. Spine3 (chest) drives A2's torso orientation.
+G1_SOURCE = {"Pelvis": ("pelvis", "Pelvis"), "Spine3": ("torso_link", "Spine3")}
 for S, s in (("Left", "left"), ("Right", "right")):
     G1_SOURCE.update({
         f"{S}_Hip": (f"{s}_hip_yaw_link", f"{S}_Hip"),

@@ -53,7 +53,7 @@ class FakeXRobotStreamer(gmr.XRobotStreamer):
         human = dict(self.to_human(self.motion[idx]))
         # joints the A2 config does not use: plausible placeholders above the floor
         pelvis_pos, pelvis_quat = human["Pelvis"]
-        for name, dz in (("Spine1", 0.1), ("Spine2", 0.2), ("Spine3", 0.3), ("Neck", 0.5), ("Head", 0.6)):
+        for name, dz in (("Spine1", 0.1), ("Spine2", 0.2), ("Neck", 0.5), ("Head", 0.6)):
             human[name] = (pelvis_pos + np.array([0.0, 0.0, dz]), pelvis_quat)
         for S in ("Left", "Right"):
             human[f"{S}_Collar"] = human[f"{S}_Shoulder"]
