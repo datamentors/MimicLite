@@ -1,0 +1,6 @@
+# @package task.command
+motion_cfgs:
+  a2_motions:
+    path: ${oc.env:A2_MOTION_DATASET,/data/motions/bonesseed_a2}
+    weight: 1.0
+    full_motion: true
