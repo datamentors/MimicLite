@@ -20,23 +20,25 @@ Already-converted clips are skipped, so the run can be stopped and resumed.
 usage: python convert_bonesseed_a2.py --out /data/motions/bonesseed_a2 --mjcf-dir /opt/a2/a2_serial
        [--s3 s3://.../BonesSeedA2/soma_uniform] [--dates 210531,...] [--limit N] [--workers 12]
 """
+
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import json
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
-from concurrent.futures import ProcessPoolExecutor
-from pathlib import Path
 
 import mujoco
 import numpy as np
 import pandas as pd
-from scipy.spatial.transform import Rotation, Slerp
+from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Slerp
 
 DEFAULT_S3 = os.environ.get("A2_S3_URI", "")  # s3://<bucket>/datasets/BonesSeedA2/soma_uniform, from docker/.env
 SRC_FPS = 120.0
@@ -50,22 +52,38 @@ _MODEL = None
 
 
 def _model(xml: str) -> mujoco.MjModel:
-    global _MODEL
+    global _MODEL  # noqa: PLW0603 - per-worker-process model cache, loaded once on first use
     if _MODEL is None:
         _MODEL = mujoco.MjModel.from_xml_path(xml)
     return _MODEL
 
 
 def csv_column(joint: str) -> str:
-    """idx05_left_toe_pitch -> left_toe_pitch_dof"""
+    """Map an MJCF joint name to its CSV column name.
+
+    Example: idx05_left_toe_pitch -> left_toe_pitch_dof.
+    """
     return joint.split("_", 1)[1] + "_dof"
 
 
 def resample(qpos: np.ndarray, src_fps: float, dst_fps: float) -> np.ndarray:
+    """Resample a qpos trajectory from src_fps to dst_fps.
+
+    Root position and hinge joints are linearly interpolated, the root quaternion (wxyz) is slerped.
+    Output times run from 0 to the last source frame time in 1/dst_fps steps.
+
+    Args:
+        qpos: [T, nq] trajectory (root xyz, root quat wxyz, joints).
+        src_fps: Frame rate of qpos.
+        dst_fps: Target frame rate.
+
+    Returns:
+        The resampled [T', nq] trajectory.
+    """
     t_src = np.arange(len(qpos)) / src_fps
     t_dst = np.minimum(np.arange(0.0, t_src[-1] + 1e-9, 1.0 / dst_fps), t_src[-1])
     out = np.empty((len(t_dst), qpos.shape[1]))
-    for c in list(range(0, 3)) + list(range(7, qpos.shape[1])):
+    for c in list(range(3)) + list(range(7, qpos.shape[1])):
         out[:, c] = np.interp(t_dst, t_src, qpos[:, c])
     rot = Rotation.from_quat(qpos[:, [4, 5, 6, 3]])  # wxyz -> xyzw
     out[:, [4, 5, 6, 3]] = Slerp(t_src, rot)(t_dst).as_quat()
@@ -73,8 +91,11 @@ def resample(qpos: np.ndarray, src_fps: float, dst_fps: float) -> np.ndarray:
 
 
 def clamp_joint_speed(q: np.ndarray, fps: float, vmax: float) -> np.ndarray:
-    """Limit per-step hinge change to vmax/fps (forward pass). Touches only the few frames where
-    the reference outruns the loader's 20 rad/s limit; the lag recovers once the joint slows."""
+    """Limit per-step hinge change to vmax/fps (forward pass).
+
+    Touches only the few frames where the reference outruns the loader's 20 rad/s limit; the lag
+    recovers once the joint slows.
+    """
     out = q.copy()
     step = vmax / fps
     for t in range(1, len(out)):
@@ -83,10 +104,22 @@ def clamp_joint_speed(q: np.ndarray, fps: float, vmax: float) -> np.ndarray:
 
 
 LEG_JOINTS = {
-    "left_toe_roll": ["idx01_left_hip_roll", "idx02_left_hip_yaw", "idx03_left_hip_pitch",
-                      "idx04_left_tarsus", "idx05_left_toe_pitch", "idx06_left_toe_roll"],
-    "right_toe_roll": ["idx07_right_hip_roll", "idx08_right_hip_yaw", "idx09_right_hip_pitch",
-                       "idx10_right_tarsus", "idx11_right_toe_pitch", "idx12_right_toe_roll"],
+    "left_toe_roll": [
+        "idx01_left_hip_roll",
+        "idx02_left_hip_yaw",
+        "idx03_left_hip_pitch",
+        "idx04_left_tarsus",
+        "idx05_left_toe_pitch",
+        "idx06_left_toe_roll",
+    ],
+    "right_toe_roll": [
+        "idx07_right_hip_roll",
+        "idx08_right_hip_yaw",
+        "idx09_right_hip_pitch",
+        "idx10_right_tarsus",
+        "idx11_right_toe_pitch",
+        "idx12_right_toe_roll",
+    ],
 }
 W_ROT = 0.3  # m per rad in the foot pose error
 IK_MAX_ITERS = 10
@@ -96,14 +129,16 @@ IK_FALLBACK_POS = 0.02  # m: foot error above this -> keep the raw leg for that 
 
 
 def resolve_legs(m: mujoco.MjModel, d: mujoco.MjData, qpos: np.ndarray) -> np.ndarray:
-    """Re-solve leg joints so each foot (toe_roll body) matches its retargeted pose, warm-started
-    from the previous frame. The retarget keeps the foot trajectory but its knee sometimes sits
-    pinned at the -5 deg limit and flips branch; a continuous solve removes that."""
+    """Re-solve leg joints so each foot (toe_roll body) matches its retargeted pose.
+
+    Warm-started from the previous frame. The retarget keeps the foot trajectory but its knee
+    sometimes sits pinned at the -5 deg limit and flips branch; a continuous solve removes that.
+    """
     legs = []
     for body, names in LEG_JOINTS.items():
         jids = [m.joint(n).id for n in names]
         legs.append((m.body(body).id, m.jnt_qposadr[jids], m.jnt_dofadr[jids], m.jnt_range[jids]))
-    T = len(qpos)
+    T = len(qpos)  # noqa: N806 - T = number of frames (math notation)
     tpos = np.empty((T, len(legs), 3))
     tquat = np.empty((T, len(legs), 4))
     for t in range(T):
@@ -122,7 +157,7 @@ def resolve_legs(m: mujoco.MjModel, d: mujoco.MjData, qpos: np.ndarray) -> np.nd
     damp = 1e-4 * np.eye(6)
     for t in range(T):
         d.qpos[:] = qpos[t]
-        for p, (_, qa, _, _) in zip(prev, legs):
+        for p, (_, qa, _, _) in zip(prev, legs, strict=True):
             d.qpos[qa] = p
         for _ in range(IK_MAX_ITERS):
             mujoco.mj_kinematics(m, d)
@@ -131,12 +166,15 @@ def resolve_legs(m: mujoco.MjModel, d: mujoco.MjData, qpos: np.ndarray) -> np.nd
                 ep = tpos[t, i] - d.xpos[b]
                 mujoco.mju_subQuat(er, tquat[t, i], d.xquat[b])  # body frame: q_cur * quat(er) = q_tgt
                 ew = d.xmat[b].reshape(3, 3) @ er
-                errs.append(None if np.linalg.norm(ep) <= IK_TOL_POS and np.linalg.norm(ew) <= IK_TOL_ROT
-                            else np.concatenate([ep, W_ROT * ew]))
+                errs.append(
+                    None
+                    if np.linalg.norm(ep) <= IK_TOL_POS and np.linalg.norm(ew) <= IK_TOL_ROT
+                    else np.concatenate([ep, W_ROT * ew])
+                )
             if all(e is None for e in errs):
                 break
             mujoco.mj_comPos(m, d)
-            for (b, qa, va, rng), err in zip(legs, errs):
+            for (b, qa, va, rng), err in zip(legs, errs, strict=True):
                 if err is None:
                     continue
                 mujoco.mj_jacBody(m, d, jp, jr, b)
@@ -177,6 +215,19 @@ def clip_stats(m: mujoco.MjModel, d: mujoco.MjData, q: np.ndarray, fps: float) -
 
 
 def convert_one(job: tuple[str, str, str, float, float]) -> dict:
+    """Convert one CSV clip into one or more validated npz motions (runs in a worker process).
+
+    Builds 120 fps qpos, applies the height fix and leg re-solve, cuts at single-frame jumps, then
+    resamples, speed-clamps and validates each segment; valid segments are written atomically
+    (out_path, or <stem>__s<k>.npz when the clip was cut).
+
+    Args:
+        job: (csv_path, out_path, mjcf xml path, output fps, min segment seconds).
+
+    Returns:
+        A report dict with "name" and "status" ("ok", "reject" or "error") plus details. Exceptions
+        are caught and reported as status "error" so one bad CSV does not stop the chunk.
+    """
     csv_path, out_path, xml, fps, min_seconds = job
     name = Path(csv_path).name
     try:
@@ -210,8 +261,10 @@ def convert_one(job: tuple[str, str, str, float, float]) -> dict:
         step = np.abs(np.diff(qpos[:, 7:], axis=0)).max(axis=1) * SRC_FPS
         cuts = np.flatnonzero(step > FLIP_RAD_S) + 1
         bounds = np.concatenate([[0], cuts, [len(qpos)]])
-        segments = [(a + (CUT_PAD if a else 0), b - (CUT_PAD if b < len(qpos) else 0))
-                    for a, b in zip(bounds[:-1], bounds[1:])]
+        segments = [
+            (a + (CUT_PAD if a else 0), b - (CUT_PAD if b < len(qpos) else 0))
+            for a, b in zip(bounds[:-1], bounds[1:], strict=True)  # noqa: RUF007 - bounds is a numpy array, keep slicing
+        ]
         segments = [(a, b) for a, b in segments if (b - a) / SRC_FPS >= min_seconds]
 
         stem = out_path[: -len(".npz")]
@@ -227,24 +280,59 @@ def convert_one(job: tuple[str, str, str, float, float]) -> dict:
             Path(dst).parent.mkdir(parents=True, exist_ok=True)
             tmp = dst + ".tmp.npz"
             np.savez_compressed(tmp, qpos=q.astype(np.float32))
-            os.replace(tmp, dst)
+            Path(tmp).replace(dst)
             saved.append(len(q))
         if not saved:
-            return {"name": name, "status": "reject", "reason": "no_valid_segment", "cuts": len(cuts),
-                    "segments": len(segments), "rejected": rejected}
-        return {"name": name, "status": "ok", "frames": int(sum(saved)), "segments_saved": len(saved),
-                "cuts": len(cuts), "kept_frac": float(sum(saved) / (len(qpos) * fps / SRC_FPS)),
-                "offset": offset, "rejected": rejected}
+            return {
+                "name": name,
+                "status": "reject",
+                "reason": "no_valid_segment",
+                "cuts": len(cuts),
+                "segments": len(segments),
+                "rejected": rejected,
+            }
+        return {
+            "name": name,
+            "status": "ok",
+            "frames": int(sum(saved)),
+            "segments_saved": len(saved),
+            "cuts": len(cuts),
+            "kept_frac": float(sum(saved) / (len(qpos) * fps / SRC_FPS)),
+            "offset": offset,
+            "rejected": rejected,
+        }
     except Exception as exc:  # one bad CSV must not stop the chunk
         return {"name": name, "status": "error", "reason": f"{type(exc).__name__}: {exc}"}
 
 
 def s3_dates(s3: str) -> list[str]:
+    """List the date folders (S3 "PRE" entries) directly under an S3 prefix via `aws s3 ls`.
+
+    Args:
+        s3: S3 prefix, with or without a trailing slash.
+
+    Returns:
+        Sorted folder names without the trailing slash.
+
+    Raises:
+        subprocess.CalledProcessError: The aws CLI call failed.
+    """
     out = subprocess.run(["aws", "s3", "ls", s3.rstrip("/") + "/"], check=True, capture_output=True, text=True)
     return sorted(line.split()[-1].rstrip("/") for line in out.stdout.splitlines() if line.strip().startswith("PRE"))
 
 
 def write_manifest(out: Path, joints: list[str], fps: float, s3: str) -> dict:
+    """Write <out>/manifest.json for all npz motions under <out>/motions.
+
+    Args:
+        out: Dataset root.
+        joints: Hinge joint names in MJCF order (appended to the root qpos names).
+        fps: Motion frame rate (timestep = 1 / fps).
+        s3: Source S3 prefix recorded in the manifest.
+
+    Returns:
+        The manifest payload that was written.
+    """
     files = sorted((out / "motions").rglob("*.npz"))
     frames = 0
     for f in files:
@@ -259,8 +347,13 @@ def write_manifest(out: Path, joints: list[str], fps: float, s3: str) -> dict:
         "qpos_dim": 7 + len(joints),
         "qpos_names": ["root_tx", "root_ty", "root_tz", "root_qw", "root_qx", "root_qy", "root_qz", *joints],
         "num_motions": len(files),
-        "source": {"s3": s3, "src_fps": SRC_FPS, "root": "cm + euler xyz deg -> m + quat wxyz",
-                   "height_fix": "p10 lowest ankle -> 0.059 m", "mirrors_included": True},
+        "source": {
+            "s3": s3,
+            "src_fps": SRC_FPS,
+            "root": "cm + euler xyz deg -> m + quat wxyz",
+            "height_fix": "p10 lowest ankle -> 0.059 m",
+            "mirrors_included": True,
+        },
         "total_hours": frames / fps / 3600.0,
     }
     (out / "manifest.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -268,6 +361,11 @@ def write_manifest(out: Path, joints: list[str], fps: float, s3: str) -> dict:
 
 
 def main() -> None:
+    """Convert the S3 BonesSeedA2 CSVs date folder by date folder, then write the manifest.
+
+    Raises:
+        subprocess.CalledProcessError: An S3 listing or sync failed (the run can be resumed).
+    """
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", required=True)
     p.add_argument("--mjcf-dir", required=True, help="dir with a2_kin.xml + meshes/ (model/build_a2_serial.py output)")
@@ -299,10 +397,11 @@ def main() -> None:
         try:
             cmd = ["aws", "s3", "sync", "--only-show-errors", f"{args.s3.rstrip('/')}/{date}/", str(chunk)]
             if args.limit:
-                listing = subprocess.run(["aws", "s3", "ls", f"{args.s3.rstrip('/')}/{date}/"], check=True,
-                                         capture_output=True, text=True).stdout.split("\n")
-                names = [l.split()[-1] for l in listing if l.endswith(".csv")][: args.limit]
-                cmd += ["--exclude", "*"] + sum((["--include", n] for n in names), [])
+                listing = subprocess.run(
+                    ["aws", "s3", "ls", f"{args.s3.rstrip('/')}/{date}/"], check=True, capture_output=True, text=True
+                ).stdout.split("\n")
+                names = [entry.split()[-1] for entry in listing if entry.endswith(".csv")][: args.limit]
+                cmd += ["--exclude", "*", *(arg for n in names for arg in ("--include", n))]
             subprocess.run(cmd, check=True)
             jobs = []
             for csv in sorted(chunk.glob("*.csv")):

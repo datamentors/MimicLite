@@ -14,11 +14,12 @@ sensor bodies (contact_body_names, A2: .*_toe_roll), paired left/right in order.
 are shifted for A2: both foot bodies sit 0.061 m above the sole when standing (G1 ~0.035).
 """
 
+from active_adaptation.envs.utils import find_bodies
+from active_adaptation.envs.utils import find_sensor_bodies
 import torch
 
-from active_adaptation.envs.utils import find_bodies, find_sensor_bodies
-
-from .feet import TrackReward, _current_in_contact
+from .feet import TrackReward
+from .feet import _current_in_contact
 from .track import _select_tracking_body_names
 
 
@@ -30,7 +31,7 @@ def _pair_feet(reward, body_names, contact_body_names, name):
         raise ValueError(
             f"{name}: {len(ref_names)} feet {ref_names} vs {len(contact_names)} contact bodies {contact_names}"
         )
-    for ref_name, contact_name in zip(ref_names, contact_names):
+    for ref_name, contact_name in zip(ref_names, contact_names, strict=True):
         if ref_name.split("_")[0] != contact_name.split("_")[0]:
             raise ValueError(f"{name}: side mismatch {ref_name} vs {contact_name}")
     sensor_ids, sensor_names = find_sensor_bodies(reward.asset, reward.contact_sensor, contact_names)
@@ -41,7 +42,7 @@ def _pair_feet(reward, body_names, contact_body_names, name):
     return list(body_indices_tracking), torch.as_tensor(ordered, dtype=torch.long, device=reward.device)
 
 
-class feet_slip_mj(TrackReward, namespace="mimic_lite"):
+class feet_slip_mj(TrackReward, namespace="mimic_lite"):  # noqa: N801 - reward classes are looked up by lowercase name from YAML (upstream convention)
     """-sum over feet in contact of clamp(horizontal foot speed - tolerance, 0, 1)."""
 
     supported_backends = ("isaaclab", "mjlab")
@@ -64,6 +65,12 @@ class feet_slip_mj(TrackReward, namespace="mimic_lite"):
         self.valid = torch.zeros(self.num_envs, 1, device=self.device)
 
     def reset(self, env_ids, reset_td=None):
+        """Mark the previous foot position invalid for the reset envs (no slip penalty on their next step).
+
+        Args:
+            env_ids: Indices of the environments being reset.
+            reset_td: Unused; part of the reward reset interface.
+        """
         self.valid[env_ids] = 0.0  # no previous position after a reset
 
     def _compute(self):
@@ -76,7 +83,7 @@ class feet_slip_mj(TrackReward, namespace="mimic_lite"):
         return -(in_contact * speed).sum(dim=1, keepdim=True)
 
 
-class feet_air_time_ref_mj(TrackReward, namespace="mimic_lite"):
+class feet_air_time_ref_mj(TrackReward, namespace="mimic_lite"):  # noqa: N801 - reward classes are looked up by lowercase name from YAML (upstream convention)
     """Air time gated by the reference contact state.
 
     A reference foot "stands" when it is slow and low. Per step, while the robot foot's contact
@@ -117,6 +124,12 @@ class feet_air_time_ref_mj(TrackReward, namespace="mimic_lite"):
         self.log_c_ratio = float(torch.log(torch.tensor(self.c_high / self.c_low)))
 
     def reset(self, env_ids, reset_td=None):
+        """Clear the accumulated air time and last contact state for the reset envs.
+
+        Args:
+            env_ids: Indices of the environments being reset.
+            reset_td: Unused; part of the reward reset interface.
+        """
         self.reward_time[env_ids] = 0.0
         self.last_contact[env_ids] = False
 
@@ -134,9 +147,7 @@ class feet_air_time_ref_mj(TrackReward, namespace="mimic_lite"):
         height_coef = self.c_low * torch.exp(self.log_c_ratio * t)
 
         mismatch = ref_standing ^ current_contact
-        self.reward_time = self.reward_time + torch.where(
-            mismatch, -self.env.step_dt, self.env.step_dt * height_coef
-        )
+        self.reward_time = self.reward_time + torch.where(mismatch, -self.env.step_dt, self.env.step_dt * height_coef)
         reward = torch.sum((self.reward_time - self.thres).clamp_max(0.0) * first_contact, dim=1, keepdim=True)
         self.reward_time = self.reward_time * (~current_contact)
         return reward

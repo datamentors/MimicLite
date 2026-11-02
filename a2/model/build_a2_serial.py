@@ -16,25 +16,42 @@ uses a tree model where those joints are driven directly:
 usage: python build_a2_serial.py --src <official model.xml> --out <dir> [--self-collision]
 Writes <dir>/a2_serial.xml and copies the referenced meshes to <dir>/meshes/.
 """
+
 from __future__ import annotations
 
 import argparse
-import shutil
 from pathlib import Path
+import shutil
 
 import mujoco
 import numpy as np
 
 KEEP_JOINTS = [
-    "idx01_left_hip_roll", "idx02_left_hip_yaw", "idx03_left_hip_pitch",
-    "idx04_left_tarsus", "idx05_left_toe_pitch", "idx06_left_toe_roll",
-    "idx07_right_hip_roll", "idx08_right_hip_yaw", "idx09_right_hip_pitch",
-    "idx10_right_tarsus", "idx11_right_toe_pitch", "idx12_right_toe_roll",
-    "idx13_left_arm_joint1", "idx14_left_arm_joint2", "idx15_left_arm_joint3",
-    "idx16_left_arm_joint4", "idx17_left_arm_joint5", "idx18_left_arm_joint6",
+    "idx01_left_hip_roll",
+    "idx02_left_hip_yaw",
+    "idx03_left_hip_pitch",
+    "idx04_left_tarsus",
+    "idx05_left_toe_pitch",
+    "idx06_left_toe_roll",
+    "idx07_right_hip_roll",
+    "idx08_right_hip_yaw",
+    "idx09_right_hip_pitch",
+    "idx10_right_tarsus",
+    "idx11_right_toe_pitch",
+    "idx12_right_toe_roll",
+    "idx13_left_arm_joint1",
+    "idx14_left_arm_joint2",
+    "idx15_left_arm_joint3",
+    "idx16_left_arm_joint4",
+    "idx17_left_arm_joint5",
+    "idx18_left_arm_joint6",
     "idx19_left_arm_joint7",
-    "idx20_right_arm_joint1", "idx21_right_arm_joint2", "idx22_right_arm_joint3",
-    "idx23_right_arm_joint4", "idx24_right_arm_joint5", "idx25_right_arm_joint6",
+    "idx20_right_arm_joint1",
+    "idx21_right_arm_joint2",
+    "idx22_right_arm_joint3",
+    "idx23_right_arm_joint4",
+    "idx24_right_arm_joint5",
+    "idx25_right_arm_joint6",
     "idx26_right_arm_joint7",
 ]
 # Linkage parts that only exist to close the parallel ankle / wrist loops.
@@ -42,14 +59,23 @@ LINKAGE_KEYWORDS = ("motor", "rod", "_ball")
 # Welded subtrees removed from the kinematics-only dataset model (a2_kin.xml).
 KIN_DROP_SUBTREES = [
     "head_yaw",
-    "left_toe_A", "left_toe_B", "right_toe_A", "right_toe_B",
-    "left_wrist_motor_A", "left_wrist_motor_B", "right_wrist_motor_A", "right_wrist_motor_B",
-    "L_paw", "R_paw",
+    "left_toe_A",
+    "left_toe_B",
+    "right_toe_A",
+    "right_toe_B",
+    "left_wrist_motor_A",
+    "left_wrist_motor_B",
+    "right_wrist_motor_A",
+    "right_wrist_motor_B",
+    "L_paw",
+    "R_paw",
 ]
 # Self-collision shapes: (geom name, shape, body it is attached to, bodies whose meshes it covers).
 # A "+" suffix means the body and its whole subtree (hand = paw + fingers, head = yaw + pitch).
-SELF_COLLISION_SHAPES = [("torso_collision", "box", "torso", ["torso"]),
-                         ("head_collision", "capsule", "head_yaw", ["head_yaw+"])]
+SELF_COLLISION_SHAPES = [
+    ("torso_collision", "box", "torso", ["torso"]),
+    ("head_collision", "capsule", "head_yaw", ["head_yaw+"]),
+]
 for _s, _h in (("left", "L"), ("right", "R")):
     SELF_COLLISION_SHAPES += [
         (f"{_s}_thigh_collision", "capsule", f"{_s}_hip_pitch", [f"{_s}_hip_pitch"]),
@@ -58,8 +84,12 @@ for _s, _h in (("left", "L"), ("right", "R")):
         (f"{_s}_shoulder_collision", "capsule", f"{_s}-arm-link2", [f"{_s}-arm-link2"]),
         (f"{_s}_upper_arm_collision", "capsule", f"{_s}-arm-link3", [f"{_s}-arm-link3"]),
         (f"{_s}_elbow_collision", "capsule", f"{_s}-arm-link4", [f"{_s}-arm-link4"]),
-        (f"{_s}_forearm_collision", "capsule", f"{_s}-arm-link5",
-         [f"{_s}-arm-link5", f"{_s}_wrist_motor_A", f"{_s}_wrist_motor_B"]),
+        (
+            f"{_s}_forearm_collision",
+            "capsule",
+            f"{_s}-arm-link5",
+            [f"{_s}-arm-link5", f"{_s}_wrist_motor_A", f"{_s}_wrist_motor_B"],
+        ),
         (f"{_s}_hand_collision", "capsule", f"{_h}_paw", [f"{_h}_paw+"]),
     ]
 SELF_COLLISION_BIT = 2  # floor/terrain use bit 1 -> these shapes never touch the floor
@@ -82,7 +112,7 @@ def _mesh_points(m: mujoco.MjModel, d: mujoco.MjData, bodies: list[str]) -> np.n
     for g in range(m.ngeom):
         if m.geom_bodyid[g] in ids and m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH:
             mid = m.geom_dataid[g]
-            v = m.mesh_vert[m.mesh_vertadr[mid]:m.mesh_vertadr[mid] + m.mesh_vertnum[mid]].astype(np.float64)
+            v = m.mesh_vert[m.mesh_vertadr[mid] : m.mesh_vertadr[mid] + m.mesh_vertnum[mid]].astype(np.float64)
             pts.append(v @ d.geom_xmat[g].reshape(3, 3).T + d.geom_xpos[g])
     return np.concatenate(pts)
 
@@ -122,7 +152,7 @@ def add_self_collision(spec: mujoco.MjSpec) -> None:
     mujoco.mj_kinematics(m, d)
     for name, shape, body, cover in SELF_COLLISION_SHAPES:
         b = m.body(body).id
-        R, p0 = d.xmat[b].reshape(3, 3), d.xpos[b]
+        R, p0 = d.xmat[b].reshape(3, 3), d.xpos[b]  # noqa: N806 - R = rotation matrix (math notation)
         local = (_mesh_points(m, d, cover) - p0) @ R  # body frame
         c = local.mean(0)
         axes = np.linalg.svd(local - c, full_matrices=False)[2]  # rows = principal axes
@@ -163,7 +193,7 @@ def add_self_collision(spec: mujoco.MjSpec) -> None:
     bodies = [m.body(body).id for _, _, body, _ in SELF_COLLISION_SHAPES]
     excluded = []
     for i, a in enumerate(bodies):
-        for b in bodies[i + 1:]:
+        for b in bodies[i + 1 :]:
             if _tree_hops(m, a, b) <= SELF_COLLISION_EXCLUDE_HOPS:
                 spec.add_exclude(bodyname1=m.body(a).name, bodyname2=m.body(b).name)
                 excluded.append(f"{m.body(a).name}/{m.body(b).name}")
@@ -171,11 +201,23 @@ def add_self_collision(spec: mujoco.MjSpec) -> None:
 
 
 def main() -> None:
+    """Build a2_serial.xml (+ meshes/) and the kinematics-only twin a2_kin.xml from the official MJCF.
+
+    Parses --src/--out/--self-collision, strips actuators, equalities, sensors, excludes, keyframes,
+    lights, the terrain floor and every joint not in KEEP_JOINTS, disables collision on the
+    ankle/wrist linkage bodies, optionally adds self-collision shapes, copies meshes, writes both
+    XML files and prints a reload summary.
+
+    Raises:
+        RuntimeError: A joint in KEEP_JOINTS is missing from the source model.
+        FileNotFoundError: A mesh file referenced by the source model does not exist.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--src", required=True)
     parser.add_argument("--out", required=True)
-    parser.add_argument("--self-collision", action="store_true",
-                        help="add limb/hand/torso self-collision shapes (add_self_collision)")
+    parser.add_argument(
+        "--self-collision", action="store_true", help="add limb/hand/torso self-collision shapes (add_self_collision)"
+    )
     args = parser.parse_args()
     src = Path(args.src).resolve()
     out = Path(args.out).resolve()
@@ -241,12 +283,15 @@ def main() -> None:
     xml_path.write_text(xml, encoding="utf-8")
 
     reloaded = mujoco.MjModel.from_xml_path(str(xml_path))
-    hinge = [reloaded.joint(i).name for i in range(reloaded.njnt)
-             if reloaded.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
+    hinge = [
+        reloaded.joint(i).name for i in range(reloaded.njnt) if reloaded.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE
+    ]
     print(f"wrote {xml_path}")
-    print(f"nbody={reloaded.nbody} njnt={reloaded.njnt} hinge={len(hinge)} nu={reloaded.nu} "
-          f"neq={reloaded.neq} mass={reloaded.body_mass.sum():.2f} (src mass "
-          f"{mujoco.MjModel.from_xml_path(str(src)).body_mass.sum():.2f})")
+    print(
+        f"nbody={reloaded.nbody} njnt={reloaded.njnt} hinge={len(hinge)} nu={reloaded.nu} "
+        f"neq={reloaded.neq} mass={reloaded.body_mass.sum():.2f} (src mass "
+        f"{mujoco.MjModel.from_xml_path(str(src)).body_mass.sum():.2f})"
+    )
     print("joint order:", hinge)
     assert reloaded.nq == 7 + len(KEEP_JOINTS), reloaded.nq
 

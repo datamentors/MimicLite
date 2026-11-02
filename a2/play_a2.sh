@@ -11,7 +11,10 @@ MOT="${1:-wave_a2}"; [ $# -gt 0 ] && shift
 [ -f "runs/$CKPT" ] || { echo "no checkpoint: runs/$CKPT" >&2; ls runs >&2; exit 1; }
 [ -f "motions/$MOT/manifest.json" ] || { echo "no motion dataset: motions/$MOT" >&2; ls motions >&2; exit 1; }
 case "$CKPT" in *huge*) DEF_MODULE=huge;; *large*) DEF_MODULE=large;; *base*) DEF_MODULE=base;; *) DEF_MODULE=small;; esac
-export A2_UID=$(id -u) A2_GID=$(id -g) GPUS="${GPU:-0}"
+A2_UID=$(id -u)
+A2_GID=$(id -g)
+GPUS="${GPU:-0}"
+export A2_UID A2_GID GPUS
 exec docker compose -f docker/compose.yaml run --rm -p "${PORT:-8080}:8080" \
   -e A2_MOTION_DATASET="/data/motions/$MOT" shell \
   bash -lc "cd /opt/aa && python projects/mimic-lite/scripts/play.py \

@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 LOG=logs/skip_to_huge_$(date +%Y%m%d_%H%M%S).log
 log() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG"; }
+# shellcheck disable=SC2012  # newest-by-mtime pick; names are script-generated (no odd chars), find has no mtime sort
 QLOG=$(ls -t runs/queue_*.log | head -1)
 log "watching $QLOG for 'done PPO small'"
 until grep -q "done PPO small" "$QLOG"; do sleep 5; done
@@ -12,6 +13,7 @@ log "small done; stopping queue before base"
 pkill -f "bash scripts/queue_host.sh" || true
 for id in $(docker ps --filter ancestor=a2-mimiclite:latest -q); do docker stop -t 30 "$id" >/dev/null; done
 sleep 5
+# shellcheck disable=SC2012  # newest-by-mtime pick; names are script-generated (no odd chars), find has no mtime sort
 B=$(ls -td runs/a2_ppo_base_* 2>/dev/null | head -1 || true)
 [ -n "$B" ] && log "aborted base run dir left for review: $B"
 echo "- $(date -u +%H:%MZ) PPO small done; Base skipped (user); starting PPO huge on GPUs 0,1" >> logs/task-logs.md

@@ -22,11 +22,12 @@ echo "run=$RUN module=$MODULE nproc=$NPROC envs/gpu=${NUM_ENVS:-8192} iters=${IT
 python /opt/a2/tools/prune_checkpoints.py "$RUN" --watch 600 --stop-file "$RUN/.train_done" >> "$RUN.log" 2>&1 &
 PRUNER=$!
 trap 'touch "$RUN/.train_done"; kill $PRUNER 2>/dev/null || true' EXIT
+# shellcheck disable=SC2086  # ${EXTRA:-} = hydra overrides, deliberately unquoted for word splitting
 python -m torch.distributed.run --nproc_per_node="$NPROC" --master_port="${MASTER_PORT:-29517}" \
     projects/mimic-lite/scripts/train.py \
     task=tracking-base task/robot=a2 backend=mjlab \
     +exp=ppo/train algo/ppo/module="$MODULE" \
-    task.num_envs=${NUM_ENVS:-8192} total_iters=${ITERS:-4000} \
+    task.num_envs="${NUM_ENVS:-8192}" total_iters="${ITERS:-4000}" \
     wandb.mode="$WANDB_MODE" wandb.project="$WANDB_PROJECT" wandb.name="$(basename "$RUN")" \
     "wandb.tags=[$RUNTYPE${WANDB_TAGS:+,$WANDB_TAGS}]" \
     hydra.run.dir="$RUN" ${EXTRA:-} 2>&1 | tee -a "$RUN.log"

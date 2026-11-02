@@ -14,7 +14,8 @@ import os
 
 from active_adaptation.registry import Registry
 
-from .humanoid import Motor, make_biped
+from .humanoid import Motor
+from .humanoid import make_biped
 
 A2_MJCF = os.environ.get("A2_MJCF", "/opt/a2/a2_serial/a2_serial.xml")
 
@@ -63,6 +64,15 @@ MOTORS = [
 
 
 def make_cfg(backend):
+    """Build the MimicLite biped asset config for the A2 serial model.
+
+    Args:
+        backend: Simulation backend passed through to make_biped (e.g. "mjlab").
+
+    Returns:
+        The make_biped config for A2_MJCF with INIT_POS / INIT_JOINT_POS, MOTORS, root "torso" and
+        the toe_roll bodies as feet.
+    """
     return make_biped(
         backend,
         mjcf=A2_MJCF,
