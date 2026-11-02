@@ -1,0 +1,25 @@
+# Ruff config for the Datamentors tools in this fork (tools/). Upstream MimicLite / submodules are not linted.
+# Same rule set as the ACoT-VLA-PI05 fork; Google docstrings (pydocstyle) enforced.
+line-length = 120
+target-version = "py310"
+
+[lint]
+select = [
+    "B", "C4", "D", "DTZ", "E4", "E7", "E9", "F", "FBT", "FURB", "I", "ICN", "ISC", "LOG", "N", "PD", "PERF",
+    "PIE", "PLC", "PLE", "PLR1", "PLR5", "PLW", "PT", "PTH", "Q", "RET", "RUF", "SIM", "SLF", "T10", "T20", "UP", "W",
+]
+ignore = [
+    "T201",   # CLI tools print progress.
+    "PD008",  # Lots of false positives.
+    "ISC001", # Conflicts with ruff format.
+    "LOG015", # Root logger is fine in scripts.
+]
+unfixable = ["B905"]  # zip(strict=...) is chosen per call, never defaulted.
+
+[lint.isort]
+force-single-line = true
+force-sort-within-sections = true
+single-line-exclusions = ["collections.abc", "typing", "typing_extensions"]
+
+[lint.pydocstyle]
+convention = "google"

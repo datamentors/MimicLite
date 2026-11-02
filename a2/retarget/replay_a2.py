@@ -10,17 +10,17 @@ usage (on the workstation, from the MimicLite checkout):
   sim2real/.venv/bin/python a2/retarget/replay_a2.py <motions>/*.csv <motions>/*.npz
   then open http://<workstation-ip>:8090
 """
+
 from __future__ import annotations
 
 import argparse
-import time
 from pathlib import Path
+import time
 
 import mujoco
 import numpy as np
 import pandas as pd
 from scipy.spatial.transform import Rotation
-
 from sim2real.utils.mjviser_viewer import MjviserMujocoViewer
 
 HERE = Path(__file__).resolve().parent
@@ -28,6 +28,15 @@ CSV_FPS = 120.0
 
 
 def load_csv(path: Path, m: mujoco.MjModel) -> np.ndarray:
+    """Read a raw BonesSeedA2 CSV into qpos rows of the given A2 model.
+
+    Args:
+        path: CSV with root translate (cm), root rotate (euler xyz deg) and per-joint ``*_dof`` columns (deg).
+        m: A2 kinematic model; its hinge order defines the qpos joint columns.
+
+    Returns:
+        (frames, nq) qpos array: root xyz in m, quat wxyz, hinge angles in rad.
+    """
     df = pd.read_csv(path)
     df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
     hinges = [m.joint(i).name for i in range(m.njnt) if m.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
@@ -41,6 +50,7 @@ def load_csv(path: Path, m: mujoco.MjModel) -> np.ndarray:
 
 
 def main() -> None:
+    """Load the clips and serve the browser replay viewer until it is closed."""
     p = argparse.ArgumentParser()
     p.add_argument("motions", nargs="+", type=Path)
     p.add_argument("--mjcf", type=Path, default=HERE.parent / "model" / "a2_serial" / "a2_kin.xml")
@@ -63,8 +73,7 @@ def main() -> None:
         print(f"loaded {label}  root z range {q[:, 2].min():.3f}..{q[:, 2].max():.3f} m")
 
     names = list(clips)
-    viewer = MjviserMujocoViewer(m, d, label="A2 motion replay", port=args.port, tracked_body_id=1,
-                                 camera_distance=3.0)
+    viewer = MjviserMujocoViewer(m, d, label="A2 motion replay", port=args.port, tracked_body_id=1, camera_distance=3.0)
     gui = viewer.server.gui
     with gui.add_folder("Replay"):
         clip_dd = gui.add_dropdown("Clip", options=names, initial_value=names[0])
@@ -98,7 +107,7 @@ def main() -> None:
             state["t"] += dt * speed.value
             if state["t"] > dur:
                 state["t"] = state["t"] % dur if loop.value else dur
-        i = min(int(round(state["t"] * fps)), len(q) - 1)
+        i = min(round(state["t"] * fps), len(q) - 1)
         d.qpos[:] = q[i]
         mujoco.mj_kinematics(m, d)
         viewer.sync()

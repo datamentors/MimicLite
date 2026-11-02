@@ -1,9 +1,14 @@
-"""Convert gear_sonic_deploy reference folders (joint_pos.csv, body_pos.csv, body_quat.csv @ 50 Hz,
-IsaacLab joint order, body 0 = pelvis, quat wxyz) into one any4hdmi dataset.
+"""Convert G1 SONIC deploy reference folders into one any4hdmi dataset.
 
-usage: python sonic_ref_to_any4hdmi.py --out-dir DIR REF_DIR [REF_DIR ...]
+Input: gear_sonic_deploy reference folders (joint_pos.csv, body_pos.csv, body_quat.csv at 50 Hz, IsaacLab joint
+order, body 0 = pelvis, quat wxyz). Output: any4hdmi motions + manifest, the G1 input of retarget/run.sh.
+
+Usage:
+    python sonic_ref_to_any4hdmi.py --out-dir DIR REF_DIR [REF_DIR ...]
+
 Run with the sim2real venv. Mirrors any4hdmi/scripts/preprocess/lafan.py.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,36 +21,57 @@ try:
 except ImportError:
     from mjhub import resolve_mjcf_reference as resolve_asset_reference
 
-from any4hdmi.core.format import MOTION_DTYPE, MOTIONS_SUBDIR, save_motion, write_manifest
-from any4hdmi.core.model import G1_JOINT_ORDER, base_qpos_adr, joint_qpos_adrs, load_model
-from any4hdmi.utils.mjcf import (
-    DEFAULT_MJCF_PATH,
-    DEFAULT_MJCF_REPO_ID,
-    DEFAULT_MJCF_REVISION,
-    build_hf_mjcf_reference,
-    qpos_names_from_model,
-)
+from any4hdmi.core.format import MOTION_DTYPE
+from any4hdmi.core.format import MOTIONS_SUBDIR
+from any4hdmi.core.format import save_motion
+from any4hdmi.core.format import write_manifest
+from any4hdmi.core.model import G1_JOINT_ORDER
+from any4hdmi.core.model import base_qpos_adr
+from any4hdmi.core.model import joint_qpos_adrs
+from any4hdmi.core.model import load_model
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_PATH
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_REPO_ID
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_REVISION
+from any4hdmi.utils.mjcf import build_hf_mjcf_reference
+from any4hdmi.utils.mjcf import qpos_names_from_model
 
 # IsaacLab / SONIC joint order (same as MimicLite policy_joint_names).
 ISAACLAB_JOINT_ORDER = [
-    "left_hip_pitch_joint", "right_hip_pitch_joint", "waist_yaw_joint",
-    "left_hip_roll_joint", "right_hip_roll_joint", "waist_roll_joint",
-    "left_hip_yaw_joint", "right_hip_yaw_joint", "waist_pitch_joint",
-    "left_knee_joint", "right_knee_joint",
-    "left_shoulder_pitch_joint", "right_shoulder_pitch_joint",
-    "left_ankle_pitch_joint", "right_ankle_pitch_joint",
-    "left_shoulder_roll_joint", "right_shoulder_roll_joint",
-    "left_ankle_roll_joint", "right_ankle_roll_joint",
-    "left_shoulder_yaw_joint", "right_shoulder_yaw_joint",
-    "left_elbow_joint", "right_elbow_joint",
-    "left_wrist_roll_joint", "right_wrist_roll_joint",
-    "left_wrist_pitch_joint", "right_wrist_pitch_joint",
-    "left_wrist_yaw_joint", "right_wrist_yaw_joint",
+    "left_hip_pitch_joint",
+    "right_hip_pitch_joint",
+    "waist_yaw_joint",
+    "left_hip_roll_joint",
+    "right_hip_roll_joint",
+    "waist_roll_joint",
+    "left_hip_yaw_joint",
+    "right_hip_yaw_joint",
+    "waist_pitch_joint",
+    "left_knee_joint",
+    "right_knee_joint",
+    "left_shoulder_pitch_joint",
+    "right_shoulder_pitch_joint",
+    "left_ankle_pitch_joint",
+    "right_ankle_pitch_joint",
+    "left_shoulder_roll_joint",
+    "right_shoulder_roll_joint",
+    "left_ankle_roll_joint",
+    "right_ankle_roll_joint",
+    "left_shoulder_yaw_joint",
+    "right_shoulder_yaw_joint",
+    "left_elbow_joint",
+    "right_elbow_joint",
+    "left_wrist_roll_joint",
+    "right_wrist_roll_joint",
+    "left_wrist_pitch_joint",
+    "right_wrist_pitch_joint",
+    "left_wrist_yaw_joint",
+    "right_wrist_yaw_joint",
 ]
 SONIC_FPS = 50.0
 
 
 def _load(ref_dir: Path, name: str) -> np.ndarray:
+    """Load one header-prefixed CSV of a reference folder as a 2-D float array."""
     path = ref_dir / name
     if not path.is_file():
         raise FileNotFoundError(f"missing {path}")
@@ -54,6 +80,12 @@ def _load(ref_dir: Path, name: str) -> np.ndarray:
 
 
 def main() -> None:
+    """Convert every given reference folder to an any4hdmi motion and write the dataset manifest.
+
+    Raises:
+        FileNotFoundError: A reference folder lacks one of the three CSVs.
+        ValueError: The CSVs disagree in length or joint_pos is not 29 wide.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("refs", nargs="+")
     parser.add_argument("--out-dir", required=True)
@@ -98,8 +130,12 @@ def main() -> None:
         qpos_names=qpos_names_from_model(model),
         num_motions=len(args.refs),
         total_hours=total_frames / SONIC_FPS / 3600.0,
-        source={"refs": [str(Path(r).expanduser().resolve()) for r in args.refs], "fps": SONIC_FPS,
-                "root_representation": "body 0 (pelvis) pos + quat wxyz", "joint_order": "isaaclab"},
+        source={
+            "refs": [str(Path(r).expanduser().resolve()) for r in args.refs],
+            "fps": SONIC_FPS,
+            "root_representation": "body 0 (pelvis) pos + quat wxyz",
+            "joint_order": "isaaclab",
+        },
     )
 
 

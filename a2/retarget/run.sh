@@ -15,7 +15,12 @@ export A2_MODEL="${A2_MODEL:-a2_serial_selfcol}"
 POLICY="${A2_POLICY_DIR:-$HOME/MimicLite-a2/checkpoints/a2-huge-selfcol-23000}"
 # GMR config: A2_RETARGET_CFG=<json> (e.g. cfg/xrobot_to_a2_generic_b62a773.json), else a2_sim2real.py's default;
 # the one used is printed as "Use IK config:" in logs/<clip>[_<TAG>]_retarget.log
-if [ -n "${A2_RETARGET_CFG:-}" ]; then export A2_GMR_CONFIG="$(realpath "$A2_RETARGET_CFG")"; else unset A2_GMR_CONFIG; fi
+if [ -n "${A2_RETARGET_CFG:-}" ]; then
+  A2_GMR_CONFIG="$(realpath "$A2_RETARGET_CFG")"
+  export A2_GMR_CONFIG
+else
+  unset A2_GMR_CONFIG
+fi
 TAG="${TAG:-}"        # output variant: out/a2_sonic_ref_<TAG>/, logs/<clip>_<TAG>_*
 SRC="$ML/any4hdmi/output/g1/sonic_ref"
 OUT="$HERE/out/a2_sonic_ref${TAG:+_$TAG}"

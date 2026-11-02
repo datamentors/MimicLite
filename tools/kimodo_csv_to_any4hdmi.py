@@ -1,9 +1,14 @@
-"""Convert kimodo G1 CSVs (kimodo/exports/mujoco.py save_csv: raw MuJoCo qpos per row =
-root xyz, root quat wxyz, 29 joints in MuJoCo order, absolute angles) into one any4hdmi dataset.
+"""Convert kimodo G1 CSVs into one any4hdmi dataset.
 
-usage: python kimodo_csv_to_any4hdmi.py --out-dir DIR [--fps 30] CSV [CSV ...]
-Run with the sim2real venv. Names: kimodo_kimodo_g1_rp_v1_<name>.csv -> motions/<name>.npz
+Input: kimodo/exports/mujoco.py save_csv output, raw MuJoCo qpos per row (root xyz, root quat wxyz, 29 joints in
+MuJoCo order, absolute angles).
+
+Usage:
+    python kimodo_csv_to_any4hdmi.py --out-dir DIR [--fps 30] CSV [CSV ...]
+
+Run with the sim2real venv. Names: kimodo_kimodo_g1_rp_v1_<name>.csv -> motions/<name>.npz.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,18 +21,27 @@ try:
 except ImportError:
     from mjhub import resolve_mjcf_reference as resolve_asset_reference
 
-from any4hdmi.core.format import MOTION_DTYPE, MOTIONS_SUBDIR, save_motion, write_manifest
-from any4hdmi.core.model import G1_JOINT_ORDER, base_qpos_adr, joint_qpos_adrs, load_model
-from any4hdmi.utils.mjcf import (
-    DEFAULT_MJCF_PATH,
-    DEFAULT_MJCF_REPO_ID,
-    DEFAULT_MJCF_REVISION,
-    build_hf_mjcf_reference,
-    qpos_names_from_model,
-)
+from any4hdmi.core.format import MOTION_DTYPE
+from any4hdmi.core.format import MOTIONS_SUBDIR
+from any4hdmi.core.format import save_motion
+from any4hdmi.core.format import write_manifest
+from any4hdmi.core.model import G1_JOINT_ORDER
+from any4hdmi.core.model import base_qpos_adr
+from any4hdmi.core.model import joint_qpos_adrs
+from any4hdmi.core.model import load_model
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_PATH
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_REPO_ID
+from any4hdmi.utils.mjcf import DEFAULT_MJCF_REVISION
+from any4hdmi.utils.mjcf import build_hf_mjcf_reference
+from any4hdmi.utils.mjcf import qpos_names_from_model
 
 
 def main() -> None:
+    """Convert every given kimodo CSV to an any4hdmi motion and write the dataset manifest.
+
+    Raises:
+        ValueError: A CSV has the wrong column count or a non-unit root quaternion.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("csvs", nargs="+")
     parser.add_argument("--out-dir", required=True)
@@ -71,8 +85,12 @@ def main() -> None:
         qpos_names=qpos_names_from_model(model),
         num_motions=len(args.csvs),
         total_hours=total_frames / args.fps / 3600.0,
-        source={"csvs": [str(Path(c).expanduser().resolve()) for c in args.csvs], "fps": args.fps,
-                "root_representation": "xyz + qw qx qy qz", "joint_order": "mujoco"},
+        source={
+            "csvs": [str(Path(c).expanduser().resolve()) for c in args.csvs],
+            "fps": args.fps,
+            "root_representation": "xyz + qw qx qy qz",
+            "joint_order": "mujoco",
+        },
     )
 
 

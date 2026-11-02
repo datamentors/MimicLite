@@ -1,4 +1,5 @@
-# source this: keeps every cache/install inside ~/MimicLite
+# shellcheck shell=bash
+# source this: keeps every cache/install inside ~/MimicLite (uv, uv-managed python, uv tools, HF hub).
 export MIMICLITE_ROOT=$HOME/MimicLite
 export UV_CACHE_DIR=$MIMICLITE_ROOT/.cache/uv
 export UV_PYTHON_INSTALL_DIR=$MIMICLITE_ROOT/.cache/uv-python
