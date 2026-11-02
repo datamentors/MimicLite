@@ -12,3 +12,5 @@ __pycache__/
 model/*/a2_serial_sim.xml
 # offline retarget outputs (teleop/tools/check_retarget.py --out)
 teleop/out/
+# retarget/run.sh outputs (G1 -> A2 clips, padded inputs, sim2sim trajectories)
+retarget/out/
