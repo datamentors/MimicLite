@@ -1,5 +1,6 @@
-"""Show A2 standing still in a pose in the browser (no physics): `zero` = the T-pose the operator calibration
-maps onto (teleop.sh calibrate), `default` = the policy's stand pose.
+"""Show A2 standing still in a pose in the browser (no physics).
+
+`zero` = the T-pose the operator calibration maps onto (teleop.sh calibrate), `default` = the policy's stand pose.
 
 Run in the sim2real venv:  sim2real/.venv/bin/python <a2>/teleop/tools/view_pose.py [zero|default] [--port N]
 """
@@ -7,15 +8,15 @@ Run in the sim2real venv:  sim2real/.venv/bin/python <a2>/teleop/tools/view_pose
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 
 import mujoco
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import a2_sim2real  # noqa: E402
+import a2_sim2real
 
 a2_sim2real.register()
 from sim2real.config.robots import get_robot_cfg  # noqa: E402
@@ -26,6 +27,7 @@ A2_SOLE_BELOW_ANKLE = 0.059
 
 
 def main() -> None:
+    """Load A2 in the chosen pose with its feet on the floor and serve it in the mjviser browser viewer."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("pose", nargs="?", choices=("zero", "default"), default="zero")
     ap.add_argument("--port", type=int, default=None)
@@ -39,14 +41,16 @@ def main() -> None:
         data.qpos[7:] = 0.0
     # stand the feet on the floor
     mujoco.mj_kinematics(model, data)
-    ankle_z = min(data.xpos[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, b)][2]
-                  for b in ("left_toe_roll", "right_toe_roll"))
+    ankle_z = min(
+        data.xpos[mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, b)][2] for b in ("left_toe_roll", "right_toe_roll")
+    )
     data.qpos[2] += A2_SOLE_BELOW_ANKLE - ankle_z
     mujoco.mj_forward(model, data)
 
     torso = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso")
-    viewer = MjviserMujocoViewer(model, data, label=f"a2-{args.pose}-pose", port=args.port,
-                                 tracked_body_id=torso, create_gui=False)
+    viewer = MjviserMujocoViewer(
+        model, data, label=f"a2-{args.pose}-pose", port=args.port, tracked_body_id=torso, create_gui=False
+    )
     print(f"A2 {args.pose} pose (x = forward, y = robot's left). Ctrl+C to stop.", flush=True)
     try:
         while viewer.is_running():

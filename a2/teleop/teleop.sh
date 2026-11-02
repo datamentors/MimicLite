@@ -26,6 +26,7 @@ SIM2REAL="$MIMICLITE_ROOT/sim2real"
 PY="$SIM2REAL/.venv/bin/python"
 TPY="$SIM2REAL/venv/teleop/.venv/bin/python"
 LAUNCH="$A2_TELEOP/a2_sim2real.py"
+# shellcheck source=/dev/null  # optional env.sh in the external MimicLite checkout, not part of this repo
 [ -f "$MIMICLITE_ROOT/env.sh" ] && source "$MIMICLITE_ROOT/env.sh"
 
 need() { [ -e "$1" ] || { echo "missing: $1 ($2)" >&2; exit 1; }; }

@@ -21,11 +21,11 @@ free joint named "floating_base_joint" and without A2's skybox/groundplane asset
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import re
 import runpy
 import sys
 import time
-from pathlib import Path
 
 import numpy as np
 
@@ -44,14 +44,32 @@ A2_MASS_KG = 70.51  # a2_serial.xml total mass (sim model)
 G1_MASS_KG = 33.74  # sim2real G1 (g1-mode_13_15.xml), what base_sim's elastic band is tuned for
 
 JOINT_NAMES = (
-    "idx01_left_hip_roll", "idx02_left_hip_yaw", "idx03_left_hip_pitch",
-    "idx04_left_tarsus", "idx05_left_toe_pitch", "idx06_left_toe_roll",
-    "idx07_right_hip_roll", "idx08_right_hip_yaw", "idx09_right_hip_pitch",
-    "idx10_right_tarsus", "idx11_right_toe_pitch", "idx12_right_toe_roll",
-    "idx13_left_arm_joint1", "idx14_left_arm_joint2", "idx15_left_arm_joint3", "idx16_left_arm_joint4",
-    "idx17_left_arm_joint5", "idx18_left_arm_joint6", "idx19_left_arm_joint7",
-    "idx20_right_arm_joint1", "idx21_right_arm_joint2", "idx22_right_arm_joint3", "idx23_right_arm_joint4",
-    "idx24_right_arm_joint5", "idx25_right_arm_joint6", "idx26_right_arm_joint7",
+    "idx01_left_hip_roll",
+    "idx02_left_hip_yaw",
+    "idx03_left_hip_pitch",
+    "idx04_left_tarsus",
+    "idx05_left_toe_pitch",
+    "idx06_left_toe_roll",
+    "idx07_right_hip_roll",
+    "idx08_right_hip_yaw",
+    "idx09_right_hip_pitch",
+    "idx10_right_tarsus",
+    "idx11_right_toe_pitch",
+    "idx12_right_toe_roll",
+    "idx13_left_arm_joint1",
+    "idx14_left_arm_joint2",
+    "idx15_left_arm_joint3",
+    "idx16_left_arm_joint4",
+    "idx17_left_arm_joint5",
+    "idx18_left_arm_joint6",
+    "idx19_left_arm_joint7",
+    "idx20_right_arm_joint1",
+    "idx21_right_arm_joint2",
+    "idx22_right_arm_joint3",
+    "idx23_right_arm_joint4",
+    "idx24_right_arm_joint5",
+    "idx25_right_arm_joint6",
+    "idx26_right_arm_joint7",
 )
 
 # Serial chain (no linkage rods / hands / welded head). Includes every body the exported policy tracks
@@ -59,12 +77,32 @@ JOINT_NAMES = (
 # both a2_serial.xml and the datasets' a2_kin.xml (npz_pub runs FK on the dataset MJCF, which has no paws).
 BODY_NAMES = (
     "torso",
-    "left_hip_roll", "left_hip_yaw", "left_hip_pitch", "left_tarsus", "left_toe_pitch", "left_toe_roll",
-    "right_hip_roll", "right_hip_yaw", "right_hip_pitch", "right_tarsus", "right_toe_pitch", "right_toe_roll",
-    "left-arm-link1", "left-arm-link2", "left-arm-link3", "left-arm-link4",
-    "left-arm-link5", "left-arm-link6", "left-arm-link7",
-    "right-arm-link1", "right-arm-link2", "right-arm-link3", "right-arm-link4",
-    "right-arm-link5", "right-arm-link6", "right-arm-link7",
+    "left_hip_roll",
+    "left_hip_yaw",
+    "left_hip_pitch",
+    "left_tarsus",
+    "left_toe_pitch",
+    "left_toe_roll",
+    "right_hip_roll",
+    "right_hip_yaw",
+    "right_hip_pitch",
+    "right_tarsus",
+    "right_toe_pitch",
+    "right_toe_roll",
+    "left-arm-link1",
+    "left-arm-link2",
+    "left-arm-link3",
+    "left-arm-link4",
+    "left-arm-link5",
+    "left-arm-link6",
+    "left-arm-link7",
+    "right-arm-link1",
+    "right-arm-link2",
+    "right-arm-link3",
+    "right-arm-link4",
+    "right-arm-link5",
+    "right-arm-link6",
+    "right-arm-link7",
 )
 
 # a2.py MOTORS: (joint regex, effort Nm, velocity rad/s, armature kg m^2, friction Nm)
@@ -82,22 +120,54 @@ MOTORS = (
 
 # a2_serial.xml joint ranges [rad]
 JOINT_RANGE = {
-    "hip_roll": (-0.698, 0.698), "hip_yaw": (-1.5708, 1.5708), "hip_pitch": (-1.9199, 0.7854),
-    "tarsus": (-0.0873, 2.4435), "toe_pitch": (-1.0472, 0.5236), "toe_roll": (-0.4887, 0.4887),
-    "left_arm_joint1": (-2.967, 2.967), "left_arm_joint2": (-0.5236, 1.6581),
-    "left_arm_joint3": (-2.967, 2.967), "left_arm_joint4": (-2.0944, 0.0),
-    "right_arm_joint1": (-2.967, 2.967), "right_arm_joint2": (-1.6581, 0.5236),
-    "right_arm_joint3": (-2.967, 2.967), "right_arm_joint4": (0.0, 2.0944),
-    "arm_joint5": (-2.8798, 2.8798), "arm_joint6": (-0.7854, 0.7854), "arm_joint7": (-0.5236, 0.5236),
+    "hip_roll": (-0.698, 0.698),
+    "hip_yaw": (-1.5708, 1.5708),
+    "hip_pitch": (-1.9199, 0.7854),
+    "tarsus": (-0.0873, 2.4435),
+    "toe_pitch": (-1.0472, 0.5236),
+    "toe_roll": (-0.4887, 0.4887),
+    "left_arm_joint1": (-2.967, 2.967),
+    "left_arm_joint2": (-0.5236, 1.6581),
+    "left_arm_joint3": (-2.967, 2.967),
+    "left_arm_joint4": (-2.0944, 0.0),
+    "right_arm_joint1": (-2.967, 2.967),
+    "right_arm_joint2": (-1.6581, 0.5236),
+    "right_arm_joint3": (-2.967, 2.967),
+    "right_arm_joint4": (0.0, 2.0944),
+    "arm_joint5": (-2.8798, 2.8798),
+    "arm_joint6": (-0.7854, 0.7854),
+    "arm_joint7": (-0.5236, 0.5236),
 }
 
 # a2.py INIT_POS / INIT_JOINT_POS (= exported policy default_joint_pos)
 INIT_ROOT_POS = (0.0, 0.0, 0.97)
 INIT_JOINT_POS = (
-    0.0, 0.0, -0.25, 0.5, -0.25, 0.0,
-    0.0, 0.0, -0.25, 0.5, -0.25, 0.0,
-    0.0, 1.05, 0.0, -0.5, -0.05, 0.0, 0.0,
-    0.0, -1.05, 0.0, 0.5, -1.51, 0.0, 0.0,
+    0.0,
+    0.0,
+    -0.25,
+    0.5,
+    -0.25,
+    0.0,
+    0.0,
+    0.0,
+    -0.25,
+    0.5,
+    -0.25,
+    0.0,
+    0.0,
+    1.05,
+    0.0,
+    -0.5,
+    -0.05,
+    0.0,
+    0.0,
+    0.0,
+    -1.05,
+    0.0,
+    0.5,
+    -1.51,
+    0.0,
+    0.0,
 )
 
 
@@ -127,7 +197,7 @@ def ensure_sim_mjcf() -> Path:
     text = text.replace('<joint type="free"/>', '<joint name="floating_base_joint" type="free"/>')
     # sim2real's load_sim_model injects its own skybox + groundplane texture/material and floor:
     # drop A2's copies (same names) so the scene is defined once
-    scene_lines = re.compile(r'^\s*<(texture|material) [^>]*name="(skybox|groundplane)"[^>]*/>\s*\n', re.M)
+    scene_lines = re.compile(r'^\s*<(texture|material) [^>]*name="(skybox|groundplane)"[^>]*/>\s*\n', re.MULTILINE)
     text, n_removed = scene_lines.subn("", text)
     if n_removed != 3:
         raise RuntimeError(f"expected 3 skybox/groundplane lines in {A2_SRC_MJCF}, found {n_removed}")
@@ -138,7 +208,15 @@ def ensure_sim_mjcf() -> Path:
 
 
 def make_robot_cfg():
-    from sim2real.config.robots.base import RobotCfg
+    """Build the sim2real RobotCfg for the A2 serial-chain model.
+
+    Joint limits come from JOINT_RANGE, velocity/effort/armature/friction from MOTORS, and the MJCF is the
+    generated a2_serial_sim.xml (created or refreshed via ensure_sim_mjcf).
+
+    Returns:
+        RobotCfg: the "a2" robot configuration.
+    """
+    from sim2real.config.robots.base import RobotCfg  # noqa: PLC0415 - sim2real is importable only in its venv/after sys.path setup
 
     motors = {j: _motor(j) for j in JOINT_NAMES}
     ranges = {j: _joint_range(j) for j in JOINT_NAMES}
@@ -153,7 +231,7 @@ def make_robot_cfg():
         joint_armature={j: m[2] for j, m in motors.items()},
         joint_frictionloss={j: m[3] for j, m in motors.items()},
         mjcf_path=str(ensure_sim_mjcf()),
-        default_qpos=INIT_ROOT_POS + (1.0, 0.0, 0.0, 0.0) + INIT_JOINT_POS,
+        default_qpos=(*INIT_ROOT_POS, 1.0, 0.0, 0.0, 0.0, *INIT_JOINT_POS),
         publish_hz=50.0,
         viewer_track_body_names=("torso",),
         elastic_band_attach_body_names=("torso",),
@@ -162,15 +240,15 @@ def make_robot_cfg():
 
 def register() -> None:
     """Register A2 in sim2real (always) and GMR (when importable, i.e. in the teleop venv)."""
-    import sim2real.config.robots as robots
+    import sim2real.config.robots as robots  # noqa: PLC0415 - sim2real is importable only after main() sets sys.path
 
-    robots._ROBOT_CFGS["a2"] = make_robot_cfg()
+    robots._ROBOT_CFGS["a2"] = make_robot_cfg()  # noqa: SLF001 - runtime registration into sim2real's private registry
     _patch_sim_floor()
     _patch_elastic_band()
 
     try:
-        import general_motion_retargeting as gmr
-        from general_motion_retargeting import params
+        import general_motion_retargeting as gmr  # noqa: PLC0415 - optional: GMR exists only in the teleop venv
+        from general_motion_retargeting import params  # noqa: PLC0415 - optional: GMR exists only in the teleop venv
     except ImportError:
         return
     if not GMR_CONFIG.exists():
@@ -199,12 +277,15 @@ def register() -> None:
 
 
 def _patch_sim_floor() -> None:
-    """sim2real injects <geom name="floor"> without contype/conaffinity, so it inherits A2's main default
+    """Make sim2real's injected floor collide with A2's foot spheres.
+
+    sim2real injects <geom name="floor"> without contype/conaffinity, so it inherits A2's main default
     (contype=conaffinity=0, which keeps A2's visual meshes out of collisions) and nothing touches it.
     load_sim_model hands its MjSpec to ensure_joint_motor_actuators (module-global lookup): wrap that to
-    make the floor collide with A2's foot spheres (contype 1)."""
+    make the floor collide with A2's foot spheres (contype 1).
+    """
     try:
-        from sim2real.sim_env.utils import mjcf
+        from sim2real.sim_env.utils import mjcf  # noqa: PLC0415 - optional: sim package may be absent (teleop venv)
     except ImportError:  # teleop venv without the sim package
         return
     base_fn = mjcf.ensure_joint_motor_actuators
@@ -221,18 +302,21 @@ def _patch_sim_floor() -> None:
             floor.conaffinity = 1
         return added
 
-    ensure_joint_motor_actuators._a2_patched = True
+    ensure_joint_motor_actuators._a2_patched = True  # noqa: SLF001 - marker attribute that makes the patch idempotent
     mjcf.ensure_joint_motor_actuators = ensure_joint_motor_actuators
 
 
 def _patch_elastic_band() -> None:
-    """base_sim's elastic band (virtual gantry) is sized for G1 (33.7 kg): stiffness 200 / damping 100 toward
+    """Scale sim2real's elastic band (virtual gantry) by the A2/G1 mass ratio.
+
+    base_sim's elastic band (virtual gantry) is sized for G1 (33.7 kg): stiffness 200 / damping 100 toward
     a point 3 m up. A2 (70.5 kg) sags through it. Scale both by the mass ratio so A2 hangs like G1 does
-    (override with env A2_BAND_SCALE). Applies only with --robot a2."""
+    (override with env A2_BAND_SCALE). Applies only with --robot a2.
+    """
     if _active_robot() != "a2":
         return
     try:
-        from sim2real.sim_env.utils import elastic_band
+        from sim2real.sim_env.utils import elastic_band  # noqa: PLC0415 - optional: sim package may be absent (teleop venv)
     except ImportError:
         return
     base_cls = elastic_band.ElasticBand
@@ -260,7 +344,8 @@ class DriftLock:
     speed below STILL_SPEED for STILL_HOLD_S), every horizontal shift of the feet is folded into an offset
     applied to the whole body, so the corrected feet stay where they were; the pelvis still moves relative to
     the feet (weight shifts, leaning). When a foot moves the offset is frozen, so real steps pass through
-    unchanged. Drift while walking is not removed. Heading (yaw) drift is not handled."""
+    unchanged. Drift while walking is not removed. Heading (yaw) drift is not handled.
+    """
 
     FEET = ("Left_Foot", "Right_Foot")
     STILL_SPEED = 0.08  # m/s; standing-still tracker noise (T-pose recordings) peaks at 0.03 m/s smoothed
@@ -269,6 +354,7 @@ class DriftLock:
     GAP_S = 0.5  # longer pause between frames (reconnect) restarts the stillness detection
 
     def __init__(self):
+        """Start unlocked with a zero offset and no previous frame."""
         self.offset = np.zeros(2)
         self.locked = False
         self._lock_xy = np.zeros(2)  # corrected mean foot position held while locked
@@ -278,6 +364,16 @@ class DriftLock:
         self._still_s = 0.0
 
     def apply(self, body_pose_dict: dict, t_s: float) -> dict:
+        """Update the stillness detector with one frame and return the drift-corrected body poses.
+
+        Args:
+            body_pose_dict: body name -> [position xyz, quaternion] (z-up); must contain both FEET entries.
+            t_s: frame timestamp in seconds (monotonic).
+
+        Returns:
+            dict: a new dict with the same keys, each position shifted in XY by the current offset; quaternions
+            are passed through unchanged.
+        """
         feet = np.array([body_pose_dict[name][0][:2] for name in self.FEET], dtype=np.float64)
         dt = None if self._prev_t is None else t_s - self._prev_t
         if dt is None or dt > self.GAP_S:
@@ -297,19 +393,27 @@ class DriftLock:
         if lock:
             self.offset = self._lock_xy - mean_feet
         if lock != self.locked:
-            print(f"[A2 drift lock] {'feet still: locked' if lock else 'feet moving: released'}, "
-                  f"offset ({self.offset[0]:+.3f}, {self.offset[1]:+.3f}) m", flush=True)
+            print(
+                f"[A2 drift lock] {'feet still: locked' if lock else 'feet moving: released'}, "
+                f"offset ({self.offset[0]:+.3f}, {self.offset[1]:+.3f}) m",
+                flush=True,
+            )
             self.locked = lock
 
         ox, oy = float(self.offset[0]), float(self.offset[1])
-        return {name: [[float(pos[0]) + ox, float(pos[1]) + oy, float(pos[2])], quat]
-                for name, (pos, quat) in body_pose_dict.items()}
+        return {
+            name: [[float(pos[0]) + ox, float(pos[1]) + oy, float(pos[2])], quat]
+            for name, (pos, quat) in body_pose_dict.items()
+        }
 
 
 def _patch_xrobot_drift_lock(gmr) -> None:
-    """pico_retarget_pub reads PICO body data through GMR's XRobotStreamer (get_raw_body_data, then
+    """Swap GMR's XRobotStreamer for a subclass that applies DriftLock.
+
+    pico_retarget_pub reads PICO body data through GMR's XRobotStreamer (get_raw_body_data, then
     coordinate_transform_unity_data): swap in a subclass whose transform runs DriftLock. Applies only with
-    --robot a2. tools/fake_pico.py subclasses the swapped class, so the fake PICO goes through it too."""
+    --robot a2. tools/fake_pico.py subclasses the swapped class, so the fake PICO goes through it too.
+    """
     if _active_robot() != "a2":
         return
     base_cls = gmr.XRobotStreamer
@@ -340,12 +444,13 @@ def _active_robot() -> str | None:
 
 
 def main() -> None:
+    """Register A2 and run the sim2real script given as the first argument as __main__."""
     if len(sys.argv) < 2 or not sys.argv[1].endswith(".py"):
         sys.exit(f"usage: python {Path(__file__).name} <sim2real script.py> --robot a2 [args...]")
     script = Path(sys.argv[1]).resolve()
     if not script.is_file():
         sys.exit(f"script not found: {script}")
-    sys.argv = [str(script)] + sys.argv[2:]
+    sys.argv = [str(script), *sys.argv[2:]]
     sys.path.insert(0, str(script.parent))
     register()
     runpy.run_path(str(script), run_name="__main__")

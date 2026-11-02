@@ -1,5 +1,6 @@
-"""Per-operator T-pose calibration -> GMR IK config (PICO/XRoboToolkit body -> AgiBot A2). This is the only
-way the A2 teleop GMR config is made; `teleop.sh calibrate <height>` records the T-pose and runs it.
+"""Per-operator T-pose calibration -> GMR IK config (PICO/XRoboToolkit body -> AgiBot A2).
+
+This is the only way the A2 teleop GMR config is made; `teleop.sh calibrate <height>` records the T-pose and runs it.
 
 Run in the sim2real teleop venv (has GMR + mujoco + scipy):
   sim2real/venv/teleop/.venv/bin/python a2/teleop/tools/make_xrobot_to_a2.py --tpose REC.npz --out CFG.json \
@@ -26,17 +27,16 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
+import sys
 
 import mujoco
 import numpy as np
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R  # noqa: N817 - conventional rotation notation
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 from a2_sim2real import ensure_sim_mjcf  # noqa: E402
-
 from general_motion_retargeting.params import IK_CONFIG_DICT  # noqa: E402
 
 A2_SOLE_BELOW_ANKLE = 0.059  # toe_roll origin to foot contact spheres (a2_serial.xml)
@@ -54,6 +54,18 @@ for side, S in (("left", "Left"), ("right", "Right")):
 
 
 def forward(model: mujoco.MjModel, qpos: dict[str, float]) -> mujoco.MjData:
+    """Run forward kinematics with the named joints set and all other qpos entries zero.
+
+    Args:
+        model: MuJoCo model.
+        qpos: joint name -> value; joints not listed stay at 0.
+
+    Returns:
+        mujoco.MjData: data after mj_forward.
+
+    Raises:
+        KeyError: if a joint is not in the model.
+    """
     data = mujoco.MjData(model)
     for name, value in qpos.items():
         jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -65,6 +77,19 @@ def forward(model: mujoco.MjModel, qpos: dict[str, float]) -> mujoco.MjData:
 
 
 def body(model: mujoco.MjModel, data: mujoco.MjData, name: str) -> tuple[np.ndarray, R]:
+    """Return a body's world position (copy) and orientation.
+
+    Args:
+        model: MuJoCo model.
+        data: data with kinematics computed.
+        name: body name.
+
+    Returns:
+        tuple: (position (3,), scipy Rotation).
+
+    Raises:
+        KeyError: if the body is not in the model.
+    """
     bid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, name)
     if bid < 0:
         raise KeyError(f"body {name} not in model")
@@ -72,18 +97,40 @@ def body(model: mujoco.MjModel, data: mujoco.MjData, name: str) -> tuple[np.ndar
 
 
 PICO_JOINTS = [
-    "Pelvis", "Left_Hip", "Right_Hip", "Spine1", "Left_Knee", "Right_Knee",
-    "Spine2", "Left_Ankle", "Right_Ankle", "Spine3", "Left_Foot", "Right_Foot",
-    "Neck", "Left_Collar", "Right_Collar", "Head", "Left_Shoulder", "Right_Shoulder",
-    "Left_Elbow", "Right_Elbow", "Left_Wrist", "Right_Wrist", "Left_Hand", "Right_Hand",
+    "Pelvis",
+    "Left_Hip",
+    "Right_Hip",
+    "Spine1",
+    "Left_Knee",
+    "Right_Knee",
+    "Spine2",
+    "Left_Ankle",
+    "Right_Ankle",
+    "Spine3",
+    "Left_Foot",
+    "Right_Foot",
+    "Neck",
+    "Left_Collar",
+    "Right_Collar",
+    "Head",
+    "Left_Shoulder",
+    "Right_Shoulder",
+    "Left_Elbow",
+    "Right_Elbow",
+    "Left_Wrist",
+    "Right_Wrist",
+    "Left_Hand",
+    "Right_Hand",
 ]
 # T-pose straightening: (joint, child joint, ideal world direction of joint->child); A2 zero pose is a T-pose
 # (legs straight down, arms straight out along +-y) facing +x
 TPOSE_SEGMENTS = [("Pelvis", "Spine1", (0, 0, 1))]
 for _S, _y in (("Left", 1), ("Right", -1)):
     TPOSE_SEGMENTS += [
-        (f"{_S}_Hip", f"{_S}_Knee", (0, 0, -1)), (f"{_S}_Knee", f"{_S}_Ankle", (0, 0, -1)),
-        (f"{_S}_Shoulder", f"{_S}_Elbow", (0, _y, 0)), (f"{_S}_Elbow", f"{_S}_Wrist", (0, _y, 0)),
+        (f"{_S}_Hip", f"{_S}_Knee", (0, 0, -1)),
+        (f"{_S}_Knee", f"{_S}_Ankle", (0, 0, -1)),
+        (f"{_S}_Shoulder", f"{_S}_Elbow", (0, _y, 0)),
+        (f"{_S}_Elbow", f"{_S}_Wrist", (0, _y, 0)),
         (f"{_S}_Wrist", f"{_S}_Hand", (0, _y, 0)),
     ]
 
@@ -99,11 +146,25 @@ def swing(d_from: np.ndarray, d_to: np.ndarray) -> R:
 
 
 def tpose_human(rec_path: Path, min_link_height: float) -> dict[str, tuple[np.ndarray, R]]:
-    """Mean T-pose from a raw PICO recording, preprocessed exactly like pico_retarget_pub does before GMR
+    """Compute the mean T-pose from a raw PICO recording.
+
+    The steadiest half of the recording is preprocessed exactly like pico_retarget_pub does before GMR
     (Unity -> z-up, pelvis heading removed, lowest joint at min_link_height), then straightened to an ideal
-    T-pose (segment directions only; measured segment lengths and twists kept)."""
-    import general_motion_retargeting as gmr
-    from sim2real.teleop import pico_retarget_pub as prp
+    T-pose (segment directions only; measured segment lengths and twists kept).
+
+    Args:
+        rec_path: npz from tools/record_pico.py with "poses" (T, 24, 7).
+        min_link_height: height the lowest joint is placed at (pico_retarget_pub --min-link-height).
+
+    Returns:
+        tuple: (joint name -> (position, Rotation) for PICO_JOINTS, operator heading as a yaw Rotation).
+
+    Raises:
+        ValueError: if poses does not have shape (T, 24, 7).
+        RuntimeError: if the hip width is too small to determine the heading.
+    """
+    import general_motion_retargeting as gmr  # noqa: PLC0415 - teleop-venv-only deps, loaded only when calibrating
+    from sim2real.teleop import pico_retarget_pub as prp  # noqa: PLC0415 - teleop-venv-only deps, loaded only when calibrating
 
     rec = np.load(rec_path)
     poses = rec["poses"]  # (T, 24, 7) Unity x y z qx qy qz qw
@@ -114,15 +175,22 @@ def tpose_human(rec_path: Path, min_link_height: float) -> dict[str, tuple[np.nd
     win = max(len(poses) // 2, 1)
     start = int(np.argmin(np.convolve(speed, np.ones(win), "valid"))) if len(speed) >= win else 0
     frames = []
-    for raw in poses[start: start + win]:
-        d = {n: [raw[i, :3].astype(np.float64), np.array([raw[i, 6], raw[i, 3], raw[i, 4], raw[i, 5]])]
-             for i, n in enumerate(PICO_JOINTS)}
+    for raw in poses[start : start + win]:
+        d = {
+            n: [raw[i, :3].astype(np.float64), np.array([raw[i, 6], raw[i, 3], raw[i, 4], raw[i, 5]])]
+            for i, n in enumerate(PICO_JOINTS)
+        }
         d = gmr.XRobotStreamer.coordinate_transform_unity_data(None, d)
         d = {k: [np.asarray(v[0], np.float32), np.asarray(v[1], np.float32)] for k, v in d.items()}
-        src_pos, src_yaw = prp._pelvis_pose_no_z_yaw_from_body_pose_dict(d)
-        d = prp._transform_body_pose_dict(
-            d, src_pelvis_pos_no_z=src_pos, src_pelvis_quat_yaw=src_yaw,
-            dst_pelvis_pos_no_z=np.zeros(3, np.float32), dst_pelvis_quat_yaw=np.array([1, 0, 0, 0], np.float32))
+        # SLF001 suppressed below: reuse the publisher's own preprocessing so the calibration matches it exactly
+        src_pos, src_yaw = prp._pelvis_pose_no_z_yaw_from_body_pose_dict(d)  # noqa: SLF001
+        d = prp._transform_body_pose_dict(  # noqa: SLF001
+            d,
+            src_pelvis_pos_no_z=src_pos,
+            src_pelvis_quat_yaw=src_yaw,
+            dst_pelvis_pos_no_z=np.zeros(3, np.float32),
+            dst_pelvis_quat_yaw=np.array([1, 0, 0, 0], np.float32),
+        )
         frames.append(d)
     pos = {n: np.mean([f[n][0] for f in frames], axis=0).astype(np.float64) for n in PICO_JOINTS}
     rot = {n: R.from_quat(np.array([f[n][1] for f in frames]), scalar_first=True).mean() for n in PICO_JOINTS}
@@ -144,14 +212,16 @@ def tpose_human(rec_path: Path, min_link_height: float) -> dict[str, tuple[np.nd
         rot[joint] = swing(seg, ideal_dir) * rot[joint]
         if joint != "Pelvis":
             ideal_pos[child] = ideal_pos[joint] + np.linalg.norm(seg) * ideal_dir
-    for S in ("Left", "Right"):  # feet follow their ankle
+    for S in ("Left", "Right"):  # noqa: N806 - feet follow their ankle; S = capitalized side prefix
         ideal_pos[f"{S}_Foot"] = ideal_pos[f"{S}_Ankle"] + (pos[f"{S}_Foot"] - pos[f"{S}_Ankle"])
     lowest = min(p[2] for p in ideal_pos.values())
-    for n in ideal_pos:
-        ideal_pos[n] = ideal_pos[n] + np.array([0.0, 0.0, min_link_height - lowest])
-    print(f"T-pose: frames {start}..{start + win} of {len(poses)}, max joint speed in window "
-          f"{speed[start: start + win - 1].max() / (1 / 60):.2f} m/s (at ~60 Hz); operator faces "
-          f"{np.degrees(heading.magnitude() * np.sign(heading.as_rotvec()[2])):+.0f} deg from +x")
+    for n, p in ideal_pos.items():
+        ideal_pos[n] = p + np.array([0.0, 0.0, min_link_height - lowest])
+    print(
+        f"T-pose: frames {start}..{start + win} of {len(poses)}, max joint speed in window "
+        f"{speed[start : start + win - 1].max() / (1 / 60):.2f} m/s (at ~60 Hz); operator faces "
+        f"{np.degrees(heading.magnitude() * np.sign(heading.as_rotvec()[2])):+.0f} deg from +x"
+    )
     return {n: (ideal_pos[n], rot[n]) for n in PICO_JOINTS}, heading
 
 
@@ -166,10 +236,12 @@ def calibrate_from_tpose(args) -> None:
     torso_pos = body(a2, ad, "torso")[0]
     a2_root_height = torso_pos[2] - body(a2, ad, "left_toe_roll")[0][2] + A2_SOLE_BELOW_ANKLE
     # A2 zero pose, turned to the operator's heading, standing on the floor
-    want = {b: heading.apply(body(a2, ad, b)[0] - torso_pos) + np.array([0.0, 0.0, a2_root_height])
-            for b, *_ in MAPPING}
-    seg = lambda a, b: np.mean([np.linalg.norm(human[f"{S}_{b}"][0] - human[f"{S}_{a}"][0])  # noqa: E731
-                                for S in ("Left", "Right")])
+    want = {
+        b: heading.apply(body(a2, ad, b)[0] - torso_pos) + np.array([0.0, 0.0, a2_root_height]) for b, *_ in MAPPING
+    }
+    seg = lambda a, b: np.mean(  # noqa: E731
+        [np.linalg.norm(human[f"{S}_{b}"][0] - human[f"{S}_{a}"][0]) for S in ("Left", "Right")]
+    )
     a2_leg = body(a2, ad, "left_hip_pitch")[0][2] - body(a2, ad, "left_toe_roll")[0][2]
     a2_arm = np.linalg.norm(body(a2, ad, "left-arm-link7")[0] - body(a2, ad, "left-arm-link2")[0])
     s_leg = a2_leg / seg("Hip", "Ankle")
@@ -190,7 +262,11 @@ def calibrate_from_tpose(args) -> None:
         "_calibration": {"tpose": Path(args.tpose).name, "height_m": args.height},
     }
     for a2_body, joint, g1_human in MAPPING:
-        s = s_leg if joint == "Pelvis" else (s_arm if any(k in joint for k in ("Shoulder", "Elbow", "Wrist")) else s_leg)
+        s = (
+            s_leg
+            if joint == "Pelvis"
+            else (s_arm if any(k in joint for k in ("Shoulder", "Elbow", "Wrist")) else s_leg)
+        )
         scale[joint] = s
         p_h, q_h = human[joint]
         q_a2 = heading * body(a2, ad, a2_body)[1]
@@ -206,8 +282,13 @@ def calibrate_from_tpose(args) -> None:
                 # offsets only for table1 entries with a non-zero weight, so table1 gets a weak position weight
                 rot_w = 0
                 pos_w = max(pos_w, 1) if table == "ik_match_table1" else pos_w
-            out[table][a2_body] = [joint, pos_w, rot_w, [round(float(v), 4) for v in local],
-                                   [round(float(v), 6) for v in quat]]
+            out[table][a2_body] = [
+                joint,
+                pos_w,
+                rot_w,
+                [round(float(v), 4) for v in local],
+                [round(float(v), 6) for v in quat],
+            ]
 
     # A2 has no waist: its rigid torso (with the welded head) follows the operator's chest (Spine3), like
     # G1's torso_link does. The PICO pelvis estimate tips back when standing normally, which with a
@@ -220,18 +301,30 @@ def calibrate_from_tpose(args) -> None:
         pos_w, rot_w = g1_weights[table]["Spine3"]
         out[table]["head_yaw"] = ["Spine3", 0, rot_w, [0.0, 0.0, 0.0], [round(float(v), 6) for v in quat]]
     args.out.write_text(json.dumps(out, indent=4) + "\n")
-    print(f"segments: hip->ankle {seg('Hip', 'Ankle'):.3f} m (A2 {a2_leg:.3f}), shoulder->wrist "
-          f"{seg('Shoulder', 'Wrist'):.3f} m (A2 {a2_arm:.3f}); hip width "
-          f"{np.linalg.norm(human['Left_Hip'][0] - human['Right_Hip'][0]):.3f} m")
+    print(
+        f"segments: hip->ankle {seg('Hip', 'Ankle'):.3f} m (A2 {a2_leg:.3f}), shoulder->wrist "
+        f"{seg('Shoulder', 'Wrist'):.3f} m (A2 {a2_arm:.3f}); hip width "
+        f"{np.linalg.norm(human['Left_Hip'][0] - human['Right_Hip'][0]):.3f} m"
+    )
     print(f"scales: pelvis/legs {s_leg:.3f}  arms {s_arm:.3f};  operator height for teleop.sh retarget: {args.height}")
     print(f"wrote {args.out}")
 
 
 def main() -> None:
+    """Parse CLI args and write the calibrated GMR config."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--tpose", type=Path, required=True,
-                    help="raw PICO T-pose recording (tools/record_pico.py): calibrate directly against A2's T-pose")
-    ap.add_argument("--out", type=Path, required=True, help="calibrated GMR config (teleop.sh: <calib>/xrobot_to_a2_tpose_<ts>.json)")
+    ap.add_argument(
+        "--tpose",
+        type=Path,
+        required=True,
+        help="raw PICO T-pose recording (tools/record_pico.py): calibrate directly against A2's T-pose",
+    )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        required=True,
+        help="calibrated GMR config (teleop.sh: <calib>/xrobot_to_a2_tpose_<ts>.json)",
+    )
     ap.add_argument("--height", type=float, default=1.75, help="operator height passed to 'teleop.sh retarget'")
     ap.add_argument("--min-link-height", type=float, default=0.01, help="pico_retarget_pub --min-link-height")
     calibrate_from_tpose(ap.parse_args())

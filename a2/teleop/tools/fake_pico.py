@@ -16,18 +16,17 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import runpy
 import sys
 import time
-from pathlib import Path
 
 import numpy as np
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation as R  # noqa: N817 - conventional rotation notation
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_retarget import G1ToHuman  # noqa: E402  (registers A2 on import)
-
-import general_motion_retargeting as gmr  # noqa: E402
+from check_retarget import G1ToHuman  # registers A2 on import
+import general_motion_retargeting as gmr
 
 UNITY_TO_RH = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], dtype=np.float64)  # xrobot_utils transform
 UNITY_TO_RH_ROT = R.from_matrix(UNITY_TO_RH)
@@ -35,16 +34,42 @@ BUTTON_SCRIPT = [(3.0, 4.0, ("A",)), (6.0, 7.0, ("A", "B")), (9.0, 9.5, ("X",))]
 
 
 class FakeXRobotStreamer(gmr.XRobotStreamer):
+    """XRobotStreamer that replays a G1 clip as PICO body data and scripted controller buttons.
+
+    motion, to_human and fps are set as class attributes by main() before pico_retarget_pub instantiates it.
+    """
+
     motion: np.ndarray
     to_human: G1ToHuman
     fps: float
 
     def __init__(self):  # no xrt.init(): nothing to connect to
+        """Set the PICO joint order and the replay start time; does not call super().__init__()."""
         self.body_joint_names = [
-            "Pelvis", "Left_Hip", "Right_Hip", "Spine1", "Left_Knee", "Right_Knee",
-            "Spine2", "Left_Ankle", "Right_Ankle", "Spine3", "Left_Foot", "Right_Foot",
-            "Neck", "Left_Collar", "Right_Collar", "Head", "Left_Shoulder", "Right_Shoulder",
-            "Left_Elbow", "Right_Elbow", "Left_Wrist", "Right_Wrist", "Left_Hand", "Right_Hand",
+            "Pelvis",
+            "Left_Hip",
+            "Right_Hip",
+            "Spine1",
+            "Left_Knee",
+            "Right_Knee",
+            "Spine2",
+            "Left_Ankle",
+            "Right_Ankle",
+            "Spine3",
+            "Left_Foot",
+            "Right_Foot",
+            "Neck",
+            "Left_Collar",
+            "Right_Collar",
+            "Head",
+            "Left_Shoulder",
+            "Right_Shoulder",
+            "Left_Elbow",
+            "Right_Elbow",
+            "Left_Wrist",
+            "Right_Wrist",
+            "Left_Hand",
+            "Right_Hand",
         ]
         self.t0 = time.monotonic()
 
@@ -55,12 +80,18 @@ class FakeXRobotStreamer(gmr.XRobotStreamer):
         pelvis_pos, pelvis_quat = human["Pelvis"]
         for name, dz in (("Spine1", 0.1), ("Spine2", 0.2), ("Neck", 0.5), ("Head", 0.6)):
             human[name] = (pelvis_pos + np.array([0.0, 0.0, dz]), pelvis_quat)
-        for S in ("Left", "Right"):
+        for S in ("Left", "Right"):  # noqa: N806 - S = capitalized side prefix, as in the module-level tables
             human[f"{S}_Collar"] = human[f"{S}_Shoulder"]
             human[f"{S}_Hand"] = human[f"{S}_Wrist"]
         return human
 
     def get_raw_body_data(self):
+        """Return the current replay frame in the SDK's raw format.
+
+        Returns:
+            tuple: (poses, None, None, None, timestamp_ns), poses being (24, 7) float32 Unity-frame
+            x y z qx qy qz qw in body_joint_names order.
+        """
         human = self._human_frame()
         poses = np.zeros((len(self.body_joint_names), 7), dtype=np.float32)
         for i, name in enumerate(self.body_joint_names):
@@ -71,19 +102,29 @@ class FakeXRobotStreamer(gmr.XRobotStreamer):
         return poses, None, None, None, time.time_ns()
 
     def get_controller_data(self):
+        """Return controller state with the buttons pressed according to BUTTON_SCRIPT.
+
+        Returns:
+            dict: "LeftController" (X/Y as key_one/key_two), "RightController" (A/B) and "timestamp" (ns).
+        """
         t = time.monotonic() - self.t0
         pressed = set()
         for start, end, keys in BUTTON_SCRIPT:
             if start <= t < end:
                 pressed.update(keys)
         side = lambda one, two: {  # noqa: E731
-            "index_trig": 0.0, "grip": 0.0, "key_one": one in pressed, "key_two": two in pressed,
-            "axis": [0.0, 0.0], "axis_click": False,
+            "index_trig": 0.0,
+            "grip": 0.0,
+            "key_one": one in pressed,
+            "key_two": two in pressed,
+            "axis": [0.0, 0.0],
+            "axis_click": False,
         }
         return {"LeftController": side("X", "Y"), "RightController": side("A", "B"), "timestamp": time.time_ns()}
 
 
 def main() -> None:
+    """Install FakeXRobotStreamer into GMR and run sim2real's pico_retarget_pub.py with the args after --."""
     if "--" not in sys.argv:
         sys.exit(__doc__)
     split = sys.argv.index("--")
@@ -97,9 +138,10 @@ def main() -> None:
     FakeXRobotStreamer.fps = 1.0 / float(json.loads(args.manifest.read_text())["timestep"])
     gmr.XRobotStreamer = FakeXRobotStreamer
 
-    import sim2real
+    import sim2real  # noqa: PLC0415 - only needed to locate pico_retarget_pub; kept after the XRobotStreamer swap
+
     script = Path(sim2real.__file__).resolve().parent / "teleop" / "pico_retarget_pub.py"
-    sys.argv = [str(script)] + sys.argv[split + 1:]
+    sys.argv = [str(script), *sys.argv[split + 1 :]]
     runpy.run_path(str(script), run_name="__main__")
 
 

@@ -1,8 +1,10 @@
-"""Record raw PICO body tracking (XRoboToolkit, 24 joints, Unity frame x y z qx qy qz qw) to an npz, e.g. a
-T-pose for tools/make_xrobot_to_a2.py --tpose. Works next to a running pico_retarget_pub (second SDK client).
+"""Record raw PICO body tracking (XRoboToolkit, 24 joints, Unity frame x y z qx qy qz qw) to an npz.
+
+E.g. a T-pose for tools/make_xrobot_to_a2.py --tpose. Works next to a running pico_retarget_pub (second SDK client).
 
   sim2real/venv/teleop/.venv/bin/python <a2>/teleop/tools/record_pico.py 15 tpose.npz
 """
+
 import os
 import sys
 import time
