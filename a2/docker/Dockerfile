@@ -36,7 +36,8 @@ RUN if [ -f venv/a2/uv.lock ]; then uv sync --project venv/a2 --frozen; \
 COPY overlay/ projects/mimic-lite/
 RUN sed -i 's/^from \. import a3, g1, h2, rp1$/from . import a2, a3, g1, h2, rp1/' \
         projects/mimic-lite/mimic_lite/assets/__init__.py \
-    && grep -q "import a2, a3" projects/mimic-lite/mimic_lite/assets/__init__.py
+    && grep -q "import a2, a3" projects/mimic-lite/mimic_lite/assets/__init__.py \
+    && echo "from .a2_feet import *" >> projects/mimic-lite/mimic_lite/tasks/rewards/__init__.py
 
 COPY model/a2_serial /opt/a2/a2_serial
 # self-collision variant (build_a2_serial.py --self-collision); used when A2_MODEL=a2_serial_selfcol

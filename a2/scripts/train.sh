@@ -2,15 +2,16 @@
 # MimicLite PPO for A2 (single stage, as the paper's Small/Base/Huge). Run inside the container.
 # Env: MODULE small|base|large|huge (default small)  NPROC (default: visible GPUs)
 #      NUM_ENVS per GPU (default 8192)  ITERS (default 4000)  RUN_NAME (default a2_ppo_<module>_<ts>)
-#      EXTRA="hydra overrides ..."  WANDB_API_KEY (online if set, else offline)  WANDB_PROJECT
+#      EXTRA="hydra overrides ..."  WANDB_API_KEY (online if set, else offline)  WANDB_PROJECT (default MimicLiteA2)
+#      WANDB_TAGS=selfcol,feetref (extra tags; the run type, e.g. HugePPO, is always tagged)
 set -euo pipefail
 cd /opt/aa
 MODULE=${MODULE:-small}
 NPROC=${NPROC:-$(nvidia-smi -L | wc -l)}
 RUN=/runs/${RUN_NAME:-a2_ppo_${MODULE}_$(date +%Y%m%d_%H%M%S)}
-# W&B project per run type: MimicLiteA2-SmallPPO / -BasePPO / -LargePPO / -HugePPO
+# One W&B project for all A2 MimicLite runs (compare across runs); the variant goes in name + tags.
 RUNTYPE="${MODULE^}PPO"
-WANDB_PROJECT=${WANDB_PROJECT:-MimicLiteA2-$RUNTYPE}
+WANDB_PROJECT=${WANDB_PROJECT:-MimicLiteA2}
 if [ -z "${WANDB_MODE:-}" ]; then
     if [ -n "${WANDB_API_KEY:-}" ]; then WANDB_MODE=online; else WANDB_MODE=offline; fi
 fi
@@ -27,6 +28,7 @@ python -m torch.distributed.run --nproc_per_node="$NPROC" --master_port="${MASTE
     +exp=ppo/train algo/ppo/module="$MODULE" \
     task.num_envs=${NUM_ENVS:-8192} total_iters=${ITERS:-4000} \
     wandb.mode="$WANDB_MODE" wandb.project="$WANDB_PROJECT" wandb.name="$(basename "$RUN")" \
+    "wandb.tags=[$RUNTYPE${WANDB_TAGS:+,$WANDB_TAGS}]" \
     hydra.run.dir="$RUN" ${EXTRA:-} 2>&1 | tee -a "$RUN.log"
 touch "$RUN/.train_done"
 kill $PRUNER 2>/dev/null || true

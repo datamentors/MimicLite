@@ -6,7 +6,7 @@
 #   logs/     conversion logs                           -> /logs
 #   ~/.aws    AWS SSO profile (CLI writes its token cache) -> /tmp/home/.aws
 x-a2: &a2
-  image: a2-mimiclite:latest
+  image: a2-mimiclite:${A2_IMAGE_TAG:-latest}  # A2_IMAGE_TAG=selfcol -> self-collision model
   user: "${A2_UID:-1001}:${A2_GID:-1002}"
   runtime: nvidia
   ipc: host
@@ -14,7 +14,9 @@ x-a2: &a2
     # private values live in docker/.env (not committed; template docker/.env.example)
     AWS_PROFILE: ${AWS_PROFILE:-}
     A2_S3_URI: ${A2_S3_URI:-}
-    WANDB_MODE: ${WANDB_MODE:-}
+    # no value: passed through only when set on the host (an empty string fails wandb's settings
+    # validation: "Settings mode"); train.sh picks online/offline itself when unset
+    WANDB_MODE:
     WANDB_API_KEY: ${WANDB_API_KEY:-}
     NVIDIA_VISIBLE_DEVICES: ${GPUS:-all}
     # host uid has no passwd entry in the image: getpass (torch inductor) reads these first

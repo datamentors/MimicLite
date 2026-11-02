@@ -1,0 +1,29 @@
+# @package task
+# A2 feet rewards (opt-in): replace feet_air_time (charges every touchdown after < 0.8 s of
+# height-weighted air time, so short/low lifts are penalized and foot sliding is free) with the
+# reference-gated feet_air_time_ref_mj, and enable feet_slip.
+# Use with PPO: task/patches=[root_window_xyz,a2_feet_ref]
+reward:
+  loco:
+    feet_air_time:
+      enabled: false
+    feet_air_time_ref_mj:
+      _target_: mimic_lite.feet_air_time_ref_mj
+      weight: 4.0
+      enabled: true
+      body_names: .*_toe_pitch
+      contact_body_names: ${task.shared.feet_body_names}
+      thres: 0.1
+      ref_vel_thres: 0.2
+      ref_height_thres: 0.176
+      height_range: [0.061, 0.146]
+      coef_range: [0.5, 2.0]
+    # feet_slip_mj, not upstream feet_slip: that one reads body COM velocity (data.xipos), which
+    # mjlab's WarpBridge does not expose in the compiled reward step.
+    feet_slip_mj:
+      _target_: mimic_lite.feet_slip_mj
+      weight: 0.5
+      enabled: true
+      body_names: .*_toe_pitch
+      contact_body_names: ${task.shared.feet_body_names}
+      tolerance: 0.05
