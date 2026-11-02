@@ -1,0 +1,53 @@
+# Run from ~/a2-mimiclite on the host:  docker compose -f docker/compose.yaml run --rm <service>
+# Host dirs (owned by the host user, container runs as that uid:gid):
+#   motions/  converted 50 fps MimicLite datasets      -> /data/motions
+#   runs/     training outputs, checkpoints, ONNX       -> /runs
+#   cache/    any4hdmi FK cache, warp/inductor caches   -> /cache
+#   logs/     conversion logs                           -> /logs
+#   ~/.aws    AWS SSO profile (CLI writes its token cache) -> /tmp/home/.aws
+x-a2: &a2
+  image: a2-mimiclite:latest
+  user: "${A2_UID:-1001}:${A2_GID:-1002}"
+  runtime: nvidia
+  ipc: host
+  environment:
+    # private values live in docker/.env (not committed; template docker/.env.example)
+    AWS_PROFILE: ${AWS_PROFILE:-}
+    A2_S3_URI: ${A2_S3_URI:-}
+    WANDB_MODE: ${WANDB_MODE:-}
+    WANDB_API_KEY: ${WANDB_API_KEY:-}
+    NVIDIA_VISIBLE_DEVICES: ${GPUS:-all}
+    # host uid has no passwd entry in the image: getpass (torch inductor) reads these first
+    USER: a2
+    LOGNAME: a2
+    MPLCONFIGDIR: /cache/mpl
+    # FK-cache build on GPU (any4hdmi default is CPU: ~80 min for BonesSeedA2 on AMAX vs ~3 min);
+    # affects only how the cache is computed, not training
+    ANY4HDMI_CACHE_BUILD_DEVICE: ${ANY4HDMI_CACHE_BUILD_DEVICE:-cuda}
+  volumes:
+    - ../motions:/data/motions
+    - ../runs:/runs
+    - ../cache:/cache
+    - ../logs:/logs
+    - ${HOME}/.aws:/tmp/home/.aws
+    # host copies override the ones baked into the image (edit without rebuilding)
+    - ../scripts:/opt/a2/scripts:ro
+    - ../tools:/opt/a2/tools:ro
+  working_dir: /runs
+
+services:
+  shell:
+    <<: *a2
+    command: bash
+  convert:
+    <<: *a2
+    command: bash /opt/a2/scripts/convert.sh
+  smoke:
+    <<: *a2
+    command: bash /opt/a2/scripts/smoke.sh
+  train:
+    <<: *a2
+    command: bash /opt/a2/scripts/train.sh
+  queue:
+    <<: *a2
+    command: bash /opt/a2/scripts/train_queue.sh

@@ -16,3 +16,7 @@ __pycache__/
 Thumbs.db
 MUJOCO_LOG.TXT
 
+# local data on the machine running the G1 helpers (motions, CSV inputs, logs)
+any4hdmi/output/
+data/
+logs/
