@@ -1,0 +1,425 @@
+<mujoco model="a2_serial">
+  <compiler angle="radian"/>
+
+  <option timestep="0.001"/>
+
+  <visual>
+    <global azimuth="150" elevation="-20"/>
+    <headlight ambient="0.3 0.3 0.3" diffuse="0.6 0.6 0.6" specular="0 0 0"/>
+    <scale forcewidth="0.03" contactwidth="0.01" contactheight="0.02" com="1" framelength="0.6" framewidth="0.05"/>
+    <rgba haze="0.15 0.25 0.35 1" com="0.502 1 0 0.5" contactpoint="1 1 0.6 0.4" contactforce="0.98 0.4 0.4 1"/>
+  </visual>
+
+  <statistic extent="1.1" center="0 0 0.55"/>
+
+  <default>
+    <geom contype="0" conaffinity="0" friction="1 1" solref="0.005"/>
+
+    <equality solref="0.005"/>
+    <default class="zhiyuan"/>
+    <default class="collision">
+      <geom type="capsule" contype="1" group="3"/>
+      <default class="collision-left">
+        <geom contype="2" conaffinity="4"/>
+      </default>
+      <default class="collision-right">
+        <geom contype="4" conaffinity="2"/>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="skybox" colorspace="auto" name="skybox" builtin="gradient" mark="random" rgb1="0.2 0.3 0.4" rgb2="0 0 0" markrgb="1 1 1" random="0.001" width="1000" height="6000"/>
+    <texture type="2d" colorspace="auto" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="1000" height="1000"/>
+    <material name="metalic silver" metallic="0.85" roughness="0.8" rgba="0.59 0.59 0.65 1"/>
+    <material name="metalic black" metallic="0.85" roughness="0.8" rgba="0.235294 0.235294 0.235294 1"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+    <mesh name="torso" content_type="model/stl" file="meshes/body.stl"/>
+    <mesh name="logo" content_type="model/stl" file="meshes/logo.stl"/>
+    <mesh name="head-yaw" content_type="model/stl" file="meshes/head_link01.stl"/>
+    <mesh name="head-pitch" content_type="model/stl" file="meshes/head_link02.stl"/>
+    <mesh name="left-hip-roll" content_type="model/stl" file="meshes/left_hip_roll.stl"/>
+    <mesh name="left-hip-yaw" content_type="model/stl" file="meshes/left_hip_yaw.stl"/>
+    <mesh name="left-hip-pitch" content_type="model/stl" file="meshes/left_hip_pitch.stl"/>
+    <mesh name="left-knee" content_type="model/stl" file="meshes/left_tarsus.stl"/>
+    <mesh name="left-toe-A" content_type="model/stl" file="meshes/left_toe_A.stl"/>
+    <mesh name="left-toe-A-rod" content_type="model/stl" file="meshes/left_toe_A_rod.stl"/>
+    <mesh name="left-toe-B" content_type="model/stl" file="meshes/left_toe_B.stl"/>
+    <mesh name="left-toe-B-rod" content_type="model/stl" file="meshes/left_toe_B_rod.stl"/>
+    <mesh name="left-toe-pitch" content_type="model/stl" file="meshes/left_toe_pitch.stl"/>
+    <mesh name="left-toe-roll" content_type="model/stl" file="meshes/left_toe_roll.stl"/>
+    <mesh name="right-hip-roll" content_type="model/stl" file="meshes/right_hip_roll.stl"/>
+    <mesh name="right-hip-yaw" content_type="model/stl" file="meshes/right_hip_yaw.stl"/>
+    <mesh name="right-hip-pitch" content_type="model/stl" file="meshes/right_hip_pitch.stl"/>
+    <mesh name="right-knee" content_type="model/stl" file="meshes/right_tarsus.stl"/>
+    <mesh name="right-toe-A" content_type="model/stl" file="meshes/right_toe_A.stl"/>
+    <mesh name="right-toe-A-rod" content_type="model/stl" file="meshes/right_toe_A_rod.stl"/>
+    <mesh name="right-toe-B" content_type="model/stl" file="meshes/right_toe_B.stl"/>
+    <mesh name="right-toe-B-rod" content_type="model/stl" file="meshes/right_toe_B_rod.stl"/>
+    <mesh name="right-toe-pitch" content_type="model/stl" file="meshes/right_toe_pitch.stl"/>
+    <mesh name="right-toe-roll" content_type="model/stl" file="meshes/right_toe_roll.stl"/>
+    <mesh name="left-arm-link1" content_type="model/stl" file="meshes/left_arm_link01.stl"/>
+    <mesh name="left-arm-link2" content_type="model/stl" file="meshes/left_arm_link02.stl"/>
+    <mesh name="left-arm-link3" content_type="model/stl" file="meshes/left_arm_link03.stl"/>
+    <mesh name="left-arm-link4" content_type="model/stl" file="meshes/left_arm_link04.stl"/>
+    <mesh name="left-arm-link5" content_type="model/stl" file="meshes/left_arm_link05.stl"/>
+    <mesh name="left-arm-link6" content_type="model/stl" file="meshes/left_arm_link06.stl"/>
+    <mesh name="left-arm-link7" content_type="model/stl" file="meshes/left_arm_link07.stl"/>
+    <mesh name="left-wrist-motor-A" content_type="model/stl" file="meshes/left_wrist_motor_A.stl"/>
+    <mesh name="left-wrist-rod-A" content_type="model/stl" file="meshes/left_wrist_rod_A.stl"/>
+    <mesh name="left-wrist-motor-B" content_type="model/stl" file="meshes/left_wrist_motor_B.stl"/>
+    <mesh name="left-wrist-rod-B" content_type="model/stl" file="meshes/left_wrist_rod_B.stl"/>
+    <mesh name="right-arm-link1" content_type="model/stl" file="meshes/right_arm_link01.stl"/>
+    <mesh name="right-arm-link2" content_type="model/stl" file="meshes/right_arm_link02.stl"/>
+    <mesh name="right-arm-link3" content_type="model/stl" file="meshes/right_arm_link03.stl"/>
+    <mesh name="right-arm-link4" content_type="model/stl" file="meshes/right_arm_link04.stl"/>
+    <mesh name="right-arm-link5" content_type="model/stl" file="meshes/right_arm_link05.stl"/>
+    <mesh name="right-arm-link6" content_type="model/stl" file="meshes/right_arm_link06.stl"/>
+    <mesh name="right-arm-link7" content_type="model/stl" file="meshes/right_arm_link07.stl"/>
+    <mesh name="right-wrist-motor-A" content_type="model/stl" file="meshes/right_wrist_motor_A.stl"/>
+    <mesh name="right-wrist-rod-A" content_type="model/stl" file="meshes/right_wrist_rod_A.stl"/>
+    <mesh name="right-wrist-motor-B" content_type="model/stl" file="meshes/right_wrist_motor_B.stl"/>
+    <mesh name="right-wrist-rod-B" content_type="model/stl" file="meshes/right_wrist_rod_B.stl"/>
+    <mesh name="R_paw" content_type="model/stl" file="meshes/base_link.stl"/>
+    <mesh name="R_thumb_swing" content_type="model/stl" file="meshes/R_thumb_swing.stl"/>
+    <mesh name="R_thumb_1" content_type="model/stl" file="meshes/R_thumb_1.stl"/>
+    <mesh name="R_thumb_2" content_type="model/stl" file="meshes/R_thumb_2.stl"/>
+    <mesh name="R_thumb_3" content_type="model/stl" file="meshes/R_thumb_3.stl"/>
+    <mesh name="R_index_1" content_type="model/stl" file="meshes/R_index_1.stl"/>
+    <mesh name="R_index_2" content_type="model/stl" file="meshes/R_index_2.stl"/>
+    <mesh name="R_middle_1" content_type="model/stl" file="meshes/R_middle_1.stl"/>
+    <mesh name="R_middle_2" content_type="model/stl" file="meshes/R_middle_2.stl"/>
+    <mesh name="R_ring_1" content_type="model/stl" file="meshes/R_ring_1.stl"/>
+    <mesh name="R_ring_2" content_type="model/stl" file="meshes/R_ring_2.stl"/>
+    <mesh name="R_pinky_1" content_type="model/stl" file="meshes/R_pinky_1.stl"/>
+    <mesh name="R_pinky_2" content_type="model/stl" file="meshes/R_pinky_2.stl"/>
+    <mesh name="L_paw" content_type="model/stl" file="meshes/base_link.stl" scale="1 -1 1"/>
+    <mesh name="L_thumb_swing" content_type="model/stl" file="meshes/R_thumb_swing.stl" scale="1 -1 1"/>
+    <mesh name="L_thumb_1" content_type="model/stl" file="meshes/R_thumb_1.stl" scale="1 1 -1"/>
+    <mesh name="L_thumb_2" content_type="model/stl" file="meshes/R_thumb_2.stl" scale="1 1 -1"/>
+    <mesh name="L_thumb_3" content_type="model/stl" file="meshes/R_thumb_3.stl" scale="1 1 -1"/>
+    <mesh name="L_index_1" content_type="model/stl" file="meshes/R_index_1.stl" scale="-1 1 1"/>
+    <mesh name="L_index_2" content_type="model/stl" file="meshes/R_index_2.stl" scale="-1 1 1"/>
+    <mesh name="L_middle_1" content_type="model/stl" file="meshes/R_middle_1.stl" scale="-1 1 1"/>
+    <mesh name="L_middle_2" content_type="model/stl" file="meshes/R_middle_2.stl" scale="-1 1 1"/>
+    <mesh name="L_ring_1" content_type="model/stl" file="meshes/R_ring_1.stl" scale="-1 1 1"/>
+    <mesh name="L_ring_2" content_type="model/stl" file="meshes/R_ring_2.stl" scale="-1 1 1"/>
+    <mesh name="L_pinky_1" content_type="model/stl" file="meshes/R_pinky_1.stl" scale="-1 1 1"/>
+    <mesh name="L_pinky_2" content_type="model/stl" file="meshes/R_pinky_2.stl" scale="-1 1 1"/>
+  </asset>
+
+  <worldbody>
+    <body name="torso" childclass="zhiyuan" pos="0 0 2">
+      <inertial pos="-0.06893 0.00034 0.17523" quat="0.999927 -0.00108635 -0.00388753 -0.011357" mass="20.4197" diaginertia="0.601906 0.569363 0.190069"/>
+      <joint type="free"/>
+      <geom type="mesh" material="metalic silver" mesh="torso"/>
+      <geom type="mesh" material="metalic black" mesh="logo"/>
+      <geom class="collision" type="mesh" mesh="torso"/>
+      <site name="imu" pos="0 0 0" size="0.01"/>
+      <body name="head_yaw" pos="-0.03779 0 0.4101">
+        <inertial pos="0.00437 -0.00015 0.11667" quat="0.751694 0.00284285 0.0556728 0.657152" mass="1.4191" diaginertia="0.00528308 0.00486807 0.00231795"/>
+        <geom type="mesh" material="metalic black" mesh="head-yaw"/>
+        <body name="head_pitch" pos="-0.00501 0 0.16059" quat="0.707105 0.707108 0 0">
+          <inertial pos="0.04499 0.04548 0.00094" quat="0.62278 0.626214 0.328118 0.335172" mass="0.9109" diaginertia="0.0055837 0.00543888 0.00420062"/>
+          <geom type="mesh" material="metalic black" mesh="head-pitch"/>
+        </body>
+      </body>
+      <body name="left_hip_roll" pos="-0.0808 0.105 -0.0652" quat="0.653281 0.270599 0.270599 0.653281">
+        <inertial pos="-5e-05 0.02144 -0.06458" quat="0.977375 0.189251 -0.0197089 0.0923786" mass="2.3646" diaginertia="0.00370575 0.00367335 0.0031401"/>
+        <joint name="idx01_left_hip_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.698 0.698" damping="1"/>
+        <geom type="mesh" material="metalic black" mesh="left-hip-roll"/>
+        <body name="left_hip_yaw" pos="0 -0.017 -0.0682" quat="0.5 0.5 -0.5 0.5">
+          <inertial pos="3e-05 0.01291 0.10977" quat="0.706831 -0.0175556 0.018132 0.706932" mass="3.7387" diaginertia="0.0148 0.009239 0.00708416"/>
+          <joint name="idx02_left_hip_yaw" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="1"/>
+          <geom type="mesh" material="metalic black" mesh="left-hip-yaw"/>
+          <body name="left_hip_pitch" pos="0 -0.02 0.1205" quat="0.653281 0.653281 0.270599 -0.270599">
+            <inertial pos="-0.0719 0.00657 0.01835" quat="0.0460481 0.676224 0.00215845 0.735253" mass="6.2946" diaginertia="0.102923 0.0965296 0.0135193"/>
+            <joint name="idx03_left_hip_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.91986 0.785398" damping="1"/>
+            <geom type="mesh" material="metalic silver" mesh="left-hip-pitch"/>
+            <body name="left_tarsus" pos="-0.34 0 0">
+              <inertial pos="-0.1822 -0.00026 -2e-05" quat="-0.0555937 0.717127 0.0115718 0.694626" mass="3.3145" diaginertia="0.0300265 0.0281934 0.00389133"/>
+              <joint name="idx04_left_tarsus" pos="0 0 0" axis="0 0 1" limited="true" range="-0.0872665 2.44346" damping="1"/>
+              <geom type="mesh" material="metalic silver" mesh="left-knee"/>
+              <body name="left_toe_A" pos="-0.138 0 -0.0315" quat="0.707107 0 0 -0.707107">
+                <inertial pos="9.121e-05 -0.0187701 -0.00172194" quat="0.448458 0.544956 -0.547665 0.449412" mass="0.0636258" diaginertia="5.26107e-05 4.43599e-05 1.05393e-05"/>
+                <geom type="mesh" material="metalic black" mesh="left-toe-A"/>
+                <body name="left_toe_A_rod" pos="0.063 0 0" quat="3.17467e-11 -0.707107 -0.707107 3.17467e-11">
+                  <inertial pos="-0.1195 0 -1.491e-05" quat="0 0.707107 0 0.707107" mass="0.0820311" diaginertia="0.00078738 0.00078598 2.28e-06"/>
+                  <geom type="mesh" material="metalic black" mesh="left-toe-A-rod"/>
+                </body>
+              </body>
+              <body name="left_toe_B" pos="-0.232 0 0.0315" quat="0.707107 0 0 -0.707107">
+                <inertial pos="-9.121e-05 -0.0187701 0.00172194" quat="0.544956 0.448458 -0.449412 0.547665" mass="0.0636258" diaginertia="5.26107e-05 4.43599e-05 1.05393e-05"/>
+                <geom type="mesh" material="metalic black" mesh="left-toe-B"/>
+                <body name="left_toe_B_rod" pos="0.063 0 0" quat="3.17467e-11 -0.707107 -0.707107 3.17467e-11">
+                  <inertial pos="-0.0725 6.53e-06 -2.437e-05" quat="-0.0924623 0.701035 -0.0924623 0.701035" mass="0.0822555" diaginertia="0.000315853 0.000314017 2.74e-06"/>
+                  <geom type="mesh" material="metalic black" mesh="left-toe-B-rod"/>
+                </body>
+              </body>
+              <body name="left_toe_pitch" pos="-0.377 0 0">
+                <inertial pos="3e-05 0 -0.00093" quat="0.707107 0 0 0.707107" mass="0.0699" diaginertia="1.58e-05 1.33e-05 6.8e-06"/>
+                <joint name="idx05_left_toe_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.0472 0.523599" damping="1"/>
+                <geom type="mesh" material="metalic black" mesh="left-toe-pitch"/>
+                <body name="left_toe_roll" quat="0.707107 -0.707107 0 0">
+                  <inertial pos="-0.03941 -0.0002 0.02378" quat="0.999655 0 -0.0262649 0" mass="1.2068" diaginertia="0.00708195 0.0066579 0.00100825"/>
+                  <joint name="idx06_left_toe_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.488692 0.488692" damping="1"/>
+                  <geom type="mesh" material="metalic black" mesh="left-toe-roll"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0 0.175" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0 -0.095" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0.05 0.12" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 -0.05 0.12" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0.05 -0.07" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 -0.05 -0.07" type="sphere"/>
+                  <site name="left-foot-hl-site" pos="-0.059 0.05 0.11" size="0.002"/>
+                  <site name="left-foot-hr-site" pos="-0.059 -0.05 0.11" size="0.002"/>
+                  <site name="left-foot-rl-site" pos="-0.059 0.05 -0.048" size="0.002"/>
+                  <site name="left-foot-rr-site" pos="-0.059 -0.05 -0.048" size="0.002"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="right_hip_roll" pos="-0.0808 -0.105 -0.0652" quat="0.653281 0.270599 0.270599 0.653281">
+        <inertial pos="2e-05 0.02144 -0.06453" quat="0.978073 0.186712 0.020297 -0.090004" mass="2.3646" diaginertia="0.0037047 0.00366977 0.00314313"/>
+        <joint name="idx07_right_hip_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.698 0.698" damping="1"/>
+        <geom type="mesh" material="metalic black" mesh="right-hip-roll"/>
+        <body name="right_hip_yaw" pos="0 -0.017 -0.0682" quat="0.5 0.5 -0.5 0.5">
+          <inertial pos="1e-05 -0.01291 0.10977" quat="0.706831 0.0175556 -0.018132 0.706932" mass="3.7387" diaginertia="0.0148 0.009239 0.00708416"/>
+          <joint name="idx08_right_hip_yaw" pos="0 0 0" axis="0 0 1" limited="true" range="-1.5708 1.5708" damping="1"/>
+          <geom type="mesh" material="metalic black" mesh="right-hip-yaw"/>
+          <body name="right_hip_pitch" pos="0 0.02 0.1205" quat="0.653281 0.653281 0.270599 -0.270599">
+            <inertial pos="-0.07029 0.007 -0.01828" quat="-0.00327494 0.736098 -0.0476427 0.675188" mass="6.285" diaginertia="0.101084 0.0944626 0.0137204"/>
+            <joint name="idx09_right_hip_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.91986 0.785398" damping="1"/>
+            <geom type="mesh" material="metalic silver" mesh="right-hip-pitch"/>
+            <body name="right_tarsus" pos="-0.34 0 0">
+              <inertial pos="-0.18216 -0.00054 0.00049" quat="-0.0107266 0.694702 0.0547828 0.717129" mass="3.3127" diaginertia="0.029935 0.0281387 0.00385425"/>
+              <joint name="idx10_right_tarsus" pos="0 0 0" axis="0 0 1" limited="true" range="-0.0872665 2.44346" damping="1"/>
+              <geom type="mesh" material="metalic silver" mesh="right-knee"/>
+              <body name="right_toe_A" pos="-0.138 0 0.0315" quat="0.707107 0 0 -0.707107">
+                <inertial pos="-9.121e-05 -0.0187701 0.00172194" quat="0.544956 0.448458 -0.449412 0.547665" mass="0.0636258" diaginertia="5.26107e-05 4.43599e-05 1.05393e-05"/>
+                <geom type="mesh" material="metalic black" mesh="right-toe-A"/>
+                <body name="right_toe_A_rod" pos="0.063 0 0" quat="3.17467e-11 -0.707107 -0.707107 3.17467e-11">
+                  <inertial pos="-0.1195 0 1.491e-05" quat="0 0.707107 0 0.707107" mass="0.0820311" diaginertia="0.00078738 0.00078598 2.28e-06"/>
+                  <geom type="mesh" material="metalic black" mesh="right-toe-A-rod"/>
+                </body>
+              </body>
+              <body name="right_toe_B" pos="-0.232 0 -0.0315" quat="0.707107 0 0 -0.707107">
+                <inertial pos="9.121e-05 -0.0187701 -0.00172194" quat="0.448458 0.544956 -0.547665 0.449412" mass="0.0636258" diaginertia="5.26107e-05 4.43599e-05 1.05393e-05"/>
+                <geom type="mesh" material="metalic black" mesh="right-toe-B"/>
+                <body name="right_toe_B_rod" pos="0.063 0 0" quat="3.17467e-11 0.707107 0.707107 3.17467e-11">
+                  <inertial pos="-0.0725 6.53e-06 2.437e-05" quat="0.0924623 0.701035 0.0924623 0.701035" mass="0.0822555" diaginertia="0.000315853 0.000314017 2.74e-06"/>
+                  <geom type="mesh" material="metalic black" mesh="right-toe-B-rod"/>
+                </body>
+              </body>
+              <body name="right_toe_pitch" pos="-0.377 0 0">
+                <inertial pos="3e-05 0 0.00217" quat="0.664266 0 0 0.747496" mass="0.0699" diaginertia="1.58355e-05 1.32645e-05 6.8e-06"/>
+                <joint name="idx11_right_toe_pitch" pos="0 0 0" axis="0 0 1" limited="true" range="-1.0472 0.523599" damping="1"/>
+                <geom type="mesh" material="metalic black" mesh="right-toe-pitch"/>
+                <body name="right_toe_roll" quat="0.707107 -0.707107 0 0">
+                  <inertial pos="-0.0394 -0.00055 0.02378" quat="0.999655 0 -0.0262576 0" mass="1.2068" diaginertia="0.00708194 0.0066581 0.00100846"/>
+                  <joint name="idx12_right_toe_roll" pos="0 0 0" axis="0 0 1" limited="true" range="-0.488692 0.488692" damping="1"/>
+                  <geom type="mesh" material="metalic black" mesh="right-toe-roll"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0 0.175" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0 -0.095" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0.05 0.12" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 -0.05 0.12" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 0.05 -0.07" type="sphere"/>
+                  <geom class="collision" size="0.002" pos="-0.059 -0.05 -0.07" type="sphere"/>
+                  <site name="right-foot-hl-site" pos="-0.059 0.05 0.11" size="0.002"/>
+                  <site name="right-foot-hr-site" pos="-0.059 -0.05 0.11" size="0.002"/>
+                  <site name="right-foot-rl-site" pos="-0.059 0.05 -0.048" size="0.002"/>
+                  <site name="right-foot-rr-site" pos="-0.059 -0.05 -0.048" size="0.002"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="left-base-link" pos="-0.03779 0 0.3421" quat="0.707107 0.707107 0 0">
+        <body name="left-arm-link1" pos="0 0 -0.191" quat="0.707107 0 0 -0.707107">
+          <inertial pos="-0.00178 0.0089 0.03374" quat="0.79826 0.599147 0.0297657 -0.0540208" mass="0.2791" diaginertia="0.000587311 0.000550904 0.000352785"/>
+          <joint name="idx13_left_arm_joint1" pos="0 0 0" axis="0 0 1" limited="true" range="-2.967 2.967" damping="10"/>
+          <geom type="mesh" material="metalic black" mesh="left-arm-link1"/>
+          <body name="left-arm-link2" quat="0.707107 0.707107 0 0">
+            <inertial pos="-0.00041 -0.05231 0.0033" quat="0.712986 0.701175 0.000694608 0.00205525" mass="2.8105" diaginertia="0.0117767 0.0115298 0.00276562"/>
+            <joint name="idx14_left_arm_joint2" pos="0 0 0" axis="0 0 1" limited="true" range="-0.523599 1.65806" damping="10"/>
+            <geom type="mesh" material="metalic silver" mesh="left-arm-link2"/>
+            <body name="left-arm-link3" pos="0 -0.154 0" quat="0.707107 0.707107 0 0">
+              <inertial pos="0.00049 0.00634 0.08017" quat="0.652055 -0.0266439 -0.0375485 0.756773" mass="1.351" diaginertia="0.00239692 0.00227864 0.00123325"/>
+              <joint name="idx15_left_arm_joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.967 2.967" damping="10"/>
+              <geom type="mesh" material="metalic silver" mesh="left-arm-link3"/>
+              <body name="left-arm-link4" pos="0 0 0.093" quat="0.5 -0.5 -0.5 0.5">
+                <inertial pos="0.00472 -0.06763 -0.00679" quat="0.58207 0.325968 -0.361767 0.651202" mass="0.68884" diaginertia="0.00087544 0.000857894 0.000370766"/>
+                <joint name="idx16_left_arm_joint4" pos="0 0 0" axis="0 0 1" limited="true" range="-2.0944 0" damping="10"/>
+                <geom type="mesh" material="metalic black" mesh="left-arm-link4"/>
+                <body name="left-arm-link5" pos="0 -0.103 0" quat="0.707107 0.707107 0 0">
+                  <inertial pos="0.0071 -1e-05 0.07157" quat="0.999982 0.000878772 -0.00588483 0.000454184" mass="0.7298" diaginertia="0.00145313 0.0012147 0.000535371"/>
+                  <joint name="idx17_left_arm_joint5" pos="0 0 0" axis="0 0 1" limited="true" range="-2.87979 2.87979" damping="10"/>
+                  <geom type="mesh" material="metalic silver" mesh="left-arm-link5"/>
+                  <body name="left_wrist_motor_A" pos="0.005 0.02245 0.0245" quat="0.00740679 0 -0.999973 0">
+                    <inertial pos="0.00013884 0.0005585 -0.0507847" quat="0.707107 0 0 0.707107" mass="0.227833" diaginertia="0.00013685 0.00013539 2.895e-05"/>
+                    <geom type="mesh" material="metalic black" mesh="left-wrist-motor-A"/>
+                    <body name="left_wrist_rod_A" pos="0 0.00055 -0.135" quat="2.67949e-08 0 1 0">
+                      <inertial pos="-6.38e-06 0.00010875 -0.00108426" quat="0.725885 0 0 0.687816" mass="0.0146827" diaginertia="9.21078e-07 5.48922e-07 4.9e-07"/>
+                      <geom type="mesh" material="metalic black" mesh="left-wrist-rod-A"/>
+                    </body>
+                  </body>
+                  <body name="left_wrist_motor_B" pos="0.005 -0.02245 0.0245" quat="0.00740679 0 -0.999973 0">
+                    <inertial pos="0.00013884 0.0005585 -0.0507847" quat="0.707107 0 0 0.707107" mass="0.227833" diaginertia="0.00013685 0.00013539 2.895e-05"/>
+                    <geom type="mesh" material="metalic black" mesh="left-wrist-motor-B"/>
+                    <body name="left_wrist_rod_B" pos="0 0.00055 -0.135" quat="2.67949e-08 0 1 0">
+                      <inertial pos="-6.38e-06 0.00010875 -0.00108426" quat="0.725885 0 0 0.687816" mass="0.0146827" diaginertia="9.21078e-07 5.48922e-07 4.9e-07"/>
+                      <geom type="mesh" material="metalic black" mesh="left-wrist-rod-B"/>
+                    </body>
+                  </body>
+                  <body name="left-arm-link6" pos="-0.01 0 0.1595" quat="0.5 -0.5 0.5 0.5">
+                    <inertial pos="0.00012 -0.00454 0" mass="0.0264" diaginertia="2.7e-06 2.3e-06 8e-07"/>
+                    <joint name="idx18_left_arm_joint6" pos="0 0 0" axis="0 0 1" limited="true" range="-0.7854 0.7854" damping="0.5"/>
+                    <geom type="mesh" material="metalic black" mesh="left-arm-link6"/>
+                    <body name="left-arm-link7" quat="0.707107 0.707107 0 0">
+                      <inertial pos="-0.01106 0 0.00793" quat="0 0.590544 0 0.807006" mass="0.0229" diaginertia="4.99043e-06 4.7e-06 2.90957e-06"/>
+                      <joint name="idx19_left_arm_joint7" pos="0 0 0" axis="0 0 1" limited="true" range="-0.5236 0.5236" damping="0.5"/>
+                      <geom type="mesh" material="metalic black" mesh="left-arm-link7"/>
+                      <body name="L_paw" quat="0.5 0.5 -0.5 -0.5">
+                        <geom name="L_paw_geom" type="mesh" contype="1" mass="0.153952" material="metalic silver" mesh="L_paw"/>
+                        <body name="L_thumb_swing" pos="-0.029178 -0.01525 0.0384">
+                          <geom name="L_thumb_swing_geom" type="mesh" contype="1" mass="0.00344767" material="metalic black" mesh="L_thumb_swing"/>
+                          <body name="L_thumb_1" pos="-0.013367 0.00088357 -0.0052468" quat="0.0233277 0.0233277 0.706723 0.706721">
+                            <geom name="L_thumb_1_geom" type="mesh" contype="1" mass="0.0221481" material="metalic black" mesh="L_thumb_1"/>
+                            <body name="L_thumb_2" pos="0.0389416 0.0379042 -0.0077">
+                              <geom name="L_thumb_2_geom" type="mesh" contype="1" mass="0.00380031" material="metalic black" mesh="L_thumb_2"/>
+                              <body name="L_thumb_3" pos="0.01728 0.014743 0.0024">
+                                <geom name="L_thumb_3_geom" type="mesh" contype="1" mass="0.00677069" material="metalic black" mesh="L_thumb_3"/>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="L_index_1" pos="-0.034645 0.0059953 0.11967" quat="0.484492 0.515039 -0.515041 -0.484494">
+                          <geom name="L_index_1_geom" type="mesh" contype="1" mass="0.00439458" material="metalic black" mesh="L_index_1"/>
+                          <body name="L_index_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="L_index_2_geom" type="mesh" contype="1" mass="0.00571204" material="metalic black" mesh="L_index_2"/>
+                          </body>
+                        </body>
+                        <body name="L_middle_1" pos="-0.014728 0.0059953 0.1205" quat="0.499998 0.5 -0.500002 -0.5">
+                          <geom name="L_middle_1_geom" type="mesh" contype="1" mass="0.00439459" material="metalic black" mesh="L_middle_1"/>
+                          <body name="L_middle_2" pos="-0.000257314 0.0321314 -0.001">
+                            <geom name="L_middle_2_geom" type="mesh" contype="1" mass="0.00621146" material="metalic black" mesh="L_middle_2"/>
+                          </body>
+                        </body>
+                        <body name="L_ring_1" pos="0.0060088 0.0059953 0.12031" quat="0.512925 0.48673 -0.486732 -0.512927">
+                          <geom name="L_ring_1_geom" type="mesh" contype="1" mass="0.0043946" material="metalic black" mesh="L_ring_1"/>
+                          <body name="L_ring_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="L_ring_2_geom" type="mesh" contype="1" mass="0.00621146" material="metalic black" mesh="L_ring_2"/>
+                          </body>
+                        </body>
+                        <body name="L_pinky_1" pos="0.026254 0.0059953 0.11901" quat="0.525476 0.473152 -0.473154 -0.525478">
+                          <geom name="L_pinky_1_geom" type="mesh" contype="1" mass="0.00439465" material="metalic black" mesh="L_pinky_1"/>
+                          <body name="L_pinky_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="L_pinky_2_geom" type="mesh" contype="1" mass="0.00441619" material="metalic black" mesh="L_pinky_2"/>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="right-base-link" pos="-0.03779 0 0.3421" quat="0.707107 0.707107 0 0">
+        <body name="right-arm-link1" pos="0 0 0.191" quat="0.707107 0 0 -0.707107">
+          <inertial pos="-0.00182 0.00889 -0.03374" quat="0.599218 0.797959 -0.0569045 0.03099" mass="0.2791" diaginertia="0.000587277 0.000550934 0.000352688"/>
+          <joint name="idx20_right_arm_joint1" pos="0 0 0" axis="0 0 1" limited="true" range="-2.967 2.967" damping="10"/>
+          <geom type="mesh" material="metalic black" mesh="right-arm-link1"/>
+          <body name="right-arm-link2" quat="0.707107 0.707107 0 0">
+            <inertial pos="4e-05 0.05207 0.0033" quat="0.701096 0.713042 0.00381501 -0.00462584" mass="2.83" diaginertia="0.0118261 0.0115989 0.00280988"/>
+            <joint name="idx21_right_arm_joint2" pos="0 0 0" axis="0 0 1" limited="true" range="-1.65806 0.523599" damping="10"/>
+            <geom type="mesh" material="metalic silver" mesh="right-arm-link2"/>
+            <body name="right-arm-link3" pos="0 0.154 0" quat="0.707107 0.707107 0 0">
+              <inertial pos="-0.00096 0.00583 -0.08207" quat="0.699319 -0.00988789 0.00875078 0.714688" mass="1.2968" diaginertia="0.00214356 0.00199873 0.0011448"/>
+              <joint name="idx22_right_arm_joint3" pos="0 0 0" axis="0 0 1" limited="true" range="-2.967 2.967" damping="10"/>
+              <geom type="mesh" material="metalic silver" mesh="right-arm-link3"/>
+              <body name="right-arm-link4" pos="0 0 -0.093" quat="0.5 -0.5 -0.5 0.5">
+                <inertial pos="0.00472 0.0672 -0.0068" quat="0.31851 0.570243 -0.660478 0.370328" mass="0.6888" diaginertia="0.000882919 0.000864198 0.000371383"/>
+                <joint name="idx23_right_arm_joint4" pos="0 0 0" axis="0 0 1" limited="true" range="0 2.0944" damping="10"/>
+                <geom type="mesh" material="metalic black" mesh="right-arm-link4"/>
+                <body name="right-arm-link5" pos="0 0.103 0" quat="0.707107 0.707107 0 0">
+                  <inertial pos="0.00716 1e-05 -0.07161" quat="0.999996 0.000665338 0.00181695 -0.00189869" mass="0.7269" diaginertia="0.00144272 0.0012047 0.000534287"/>
+                  <joint name="idx24_right_arm_joint5" pos="0 0 0" axis="0 0 1" limited="true" range="-2.87979 2.87979" damping="10"/>
+                  <geom type="mesh" material="metalic silver" mesh="right-arm-link5"/>
+                  <body name="right_wrist_motor_A" pos="0.005 0.02245 -0.0245" quat="0.999973 0 -0.00740679 0">
+                    <inertial pos="0.00013884 0.0005585 -0.0507847" quat="0.707107 0 0 0.707107" mass="0.227833" diaginertia="0.00013685 0.00013539 2.895e-05"/>
+                    <geom type="mesh" material="metalic black" mesh="right-wrist-motor-A"/>
+                    <body name="right_wrist_rod_A" pos="0 0.00055 -0.135" quat="2.67949e-08 0 1 0">
+                      <inertial pos="-6.38e-06 0.00010875 -0.00108426" quat="0.725885 0 0 0.687816" mass="0.0146827" diaginertia="9.21078e-07 5.48922e-07 4.9e-07"/>
+                      <geom type="mesh" material="metalic black" mesh="right-wrist-rod-A"/>
+                    </body>
+                  </body>
+                  <body name="right_wrist_motor_B" pos="0.005 -0.02245 -0.0245" quat="0.999973 0 -0.00740679 0">
+                    <inertial pos="0.00013884 0.0005585 -0.0507847" quat="0.707107 0 0 0.707107" mass="0.227833" diaginertia="0.00013685 0.00013539 2.895e-05"/>
+                    <geom type="mesh" material="metalic black" mesh="right-wrist-motor-B"/>
+                    <body name="right_wrist_rod_B" pos="0 0.00055 -0.135" quat="2.67949e-08 0 1 0">
+                      <inertial pos="-6.38e-06 0.00010875 -0.00108426" quat="0.725885 0 0 0.687816" mass="0.0146827" diaginertia="9.21078e-07 5.48922e-07 4.9e-07"/>
+                      <geom type="mesh" material="metalic black" mesh="right-wrist-rod-B"/>
+                    </body>
+                  </body>
+                  <body name="right-arm-link6" pos="-0.01 0 -0.1595" quat="0.5 -0.5 0.5 0.5">
+                    <inertial pos="-0.00012 -0.00446 0" mass="0.0264" diaginertia="2.7e-06 2.3e-06 8e-07"/>
+                    <joint name="idx25_right_arm_joint6" pos="0 0 0" axis="0 0 1" limited="true" range="-0.7854 0.7854" damping="0.5"/>
+                    <geom type="mesh" material="metalic black" mesh="right-arm-link6"/>
+                    <body name="right-arm-link7" quat="0.707107 0.707107 0 0">
+                      <inertial pos="0.01105 0 0.00758" quat="0 0.807006 0 0.590544" mass="0.0229" diaginertia="4.99043e-06 4.7e-06 2.90957e-06"/>
+                      <joint name="idx26_right_arm_joint7" pos="0 0 0" axis="0 0 1" limited="true" range="-0.5236 0.5236" damping="0.5"/>
+                      <geom type="mesh" material="metalic black" mesh="right-arm-link7"/>
+                      <body name="R_paw" quat="0.5 -0.5 0.5 -0.5">
+                        <geom name="R_paw_geom" type="mesh" contype="1" mass="0.153952" material="metalic silver" mesh="R_paw"/>
+                        <body name="R_thumb_swing" pos="-0.029178 0.01525 0.0384">
+                          <geom name="R_thumb_swing_geom" type="mesh" contype="1" mass="0.00344767" material="metalic black" mesh="R_thumb_swing"/>
+                          <body name="R_thumb_1" pos="-0.013367 0.00088357 0.0052468" quat="0.0233277 0.0233277 0.706723 0.706721">
+                            <geom name="R_thumb_1_geom" type="mesh" contype="1" mass="0.0221481" material="metalic black" mesh="R_thumb_1"/>
+                            <body name="R_thumb_2" pos="0.0389416 0.0379042 0.0077">
+                              <geom name="R_thumb_2_geom" type="mesh" contype="1" mass="0.00380031" material="metalic black" mesh="R_thumb_2"/>
+                              <body name="R_thumb_3" pos="0.01728 0.014743 -0.0024">
+                                <geom name="R_thumb_3_geom" type="mesh" contype="1" mass="0.00677069" material="metalic black" mesh="R_thumb_3"/>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                        <body name="R_index_1" pos="-0.034645 -0.0059953 0.11967" quat="0.484492 0.515039 -0.515041 -0.484494">
+                          <geom name="R_index_1_geom" type="mesh" contype="1" mass="0.00439458" material="metalic black" mesh="R_index_1"/>
+                          <body name="R_index_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="R_index_2_geom" type="mesh" contype="1" mass="0.00571204" material="metalic black" mesh="R_index_2"/>
+                          </body>
+                        </body>
+                        <body name="R_middle_1" pos="-0.014728 -0.0059953 0.1205" quat="0.499998 0.5 -0.500002 -0.5">
+                          <geom name="R_middle_1_geom" type="mesh" contype="1" mass="0.00439459" material="metalic black" mesh="R_middle_1"/>
+                          <body name="R_middle_2" pos="-0.000257314 0.0321314 -0.001">
+                            <geom name="R_middle_2_geom" type="mesh" contype="1" mass="0.00621146" material="metalic black" mesh="R_middle_2"/>
+                          </body>
+                        </body>
+                        <body name="R_ring_1" pos="0.0060088 -0.0059953 0.12031" quat="0.512925 0.48673 -0.486732 -0.512927">
+                          <geom name="R_ring_1_geom" type="mesh" contype="1" mass="0.0043946" material="metalic black" mesh="R_ring_1"/>
+                          <body name="R_ring_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="R_ring_2_geom" type="mesh" contype="1" mass="0.00621146" material="metalic black" mesh="R_ring_2"/>
+                          </body>
+                        </body>
+                        <body name="R_pinky_1" pos="0.026254 -0.0059953 0.11901" quat="0.525476 0.473152 -0.473154 -0.525478">
+                          <geom name="R_pinky_1_geom" type="mesh" contype="1" mass="0.00439465" material="metalic black" mesh="R_pinky_1"/>
+                          <body name="R_pinky_2" pos="-0.00025731 0.032131 -0.001">
+                            <geom name="R_pinky_2_geom" type="mesh" contype="1" mass="0.00441619" material="metalic black" mesh="R_pinky_2"/>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

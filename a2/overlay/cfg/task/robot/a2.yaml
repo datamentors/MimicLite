@@ -1,0 +1,141 @@
+# @package task
+# AgiBot A2 (Ultra) serial model, adapted from a3.yaml.
+# No waist: torso is the free root. Ankle roll is never rewarded or fed as reference (BonesSeedA2
+# retarget keeps it at 0); the policy picks it to keep the feet flat.
+name: A2TrackBase
+shared:
+  root_body_name: torso
+  anchor_body_name: torso
+  reward_root_body_name: torso
+  termination_root_body_name: torso
+  obs_body_names:
+  - torso
+  - .*_tarsus
+  - .*_toe_pitch
+  - (left|right)-arm-link3
+  - (left|right)-arm-link4
+  - (left|right)-arm-link7
+  tracking_body_names: &id001
+  - torso
+  - .*_hip_yaw
+  - .*_tarsus
+  - .*_toe_pitch
+  - (left|right)-arm-link3
+  - (left|right)-arm-link4
+  - (left|right)-arm-link7
+  reward_body_names: *id001
+  tracking_joint_names:
+  - .*_hip_roll
+  - .*_hip_yaw
+  - .*_hip_pitch
+  - .*_tarsus
+  - .*_toe_pitch
+  - .*_arm_joint.
+  reward_joint_names:
+  - .*_hip_roll
+  - .*_hip_yaw
+  - .*_hip_pitch
+  - .*_tarsus
+  - .*_arm_joint.
+  motion_body_names: *id001
+  arm_keypoint_body_names:
+  - (left|right)-arm-link3
+  - (left|right)-arm-link4
+  - (left|right)-arm-link7
+  feet_body_names:
+  - left_toe_roll
+  - right_toe_roll
+  toe_body_names: null
+  feet_metric_body_names: .*_toe_roll
+robot:
+  name: mlite-a2
+input:
+  action:
+    # 0.25 * effort / kp (same rule as a3.yaml)
+    action_scaling:
+      idx01_left_hip_roll: 0.23076923076923078
+      idx02_left_hip_yaw: 0.23076923076923078
+      idx03_left_hip_pitch: 0.175
+      idx04_left_tarsus: 0.1590909090909091
+      idx05_left_toe_pitch: 0.25
+      idx06_left_toe_roll: 0.25
+      idx07_right_hip_roll: 0.23076923076923078
+      idx08_right_hip_yaw: 0.23076923076923078
+      idx09_right_hip_pitch: 0.175
+      idx10_right_tarsus: 0.1590909090909091
+      idx11_right_toe_pitch: 0.25
+      idx12_right_toe_roll: 0.25
+      idx13_left_arm_joint1: 0.25
+      idx14_left_arm_joint2: 0.25
+      idx15_left_arm_joint3: 0.25
+      idx16_left_arm_joint4: 0.25
+      idx17_left_arm_joint5: 0.25
+      idx18_left_arm_joint6: 0.16666666666666666
+      idx19_left_arm_joint7: 0.16666666666666666
+      idx20_right_arm_joint1: 0.25
+      idx21_right_arm_joint2: 0.25
+      idx22_right_arm_joint3: 0.25
+      idx23_right_arm_joint4: 0.25
+      idx24_right_arm_joint5: 0.25
+      idx25_right_arm_joint6: 0.16666666666666666
+      idx26_right_arm_joint7: 0.16666666666666666
+reward:
+  loco:
+    feet_air_time: {}
+randomization:
+  perturb_body_materials:
+    body_names:
+    - .*_toe_roll
+    - (L|R)_paw
+    static_friction_range:
+    - 0.3
+    - 1.6
+    dynamic_friction_range:
+    - 0.3
+    - 1.2
+    restitution_range:
+    - 0.0
+    - 0.5
+    solref_time_constant_range:
+    - 0.015
+    - 0.03
+    solref_dampratio_range:
+    - 0.5
+    - 2.0
+    homogeneous: true
+  perturb_body_mass:
+    torso:
+    - 0.9
+    - 1.1
+  perturb_body_com:
+    torso:
+    - -0.03
+    - 0.03
+  actuator_params:
+    stiffness_range:
+      .*_arm_joint.:
+      - 0.9
+      - 1.1
+      .*_(hip_.*|tarsus|toe_.*):
+      - 0.8
+      - 1.2
+    damping_range:
+      .*_arm_joint.:
+      - 0.9
+      - 1.1
+      .*_(hip_.*|tarsus|toe_.*):
+      - 0.8
+      - 1.2
+    # armature is an estimate (no AgiBot data): randomize wider than A3's 0.75-1.25
+    armature_range:
+      .*:
+      - 0.5
+      - 1.5
+    friction_range:
+      .*:
+      - 0.05
+      - 0.25
+
+sim:
+  njmax: 640
+  contact_sensor_maxmatch: 256
